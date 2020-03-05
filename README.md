@@ -8,9 +8,9 @@ This module has been developed as part of my Bachelor's final-year thesis.
 
 ## Installation
 
-~section under development~
+-section under development-
 
 ## Usage
 
-~section under development~
+-section under development-
 
