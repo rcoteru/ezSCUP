@@ -1,0 +1,19 @@
+# Compiled python modules.
+/ezSCUP/__pycache__
+*.pyc
+
+# Setuptools distribution folder.
+/dist/
+
+# Python egg metadata, regenerated from source files by setuptools.
+/*.egg-info
+/*.egg
+
+# Possible random files
+*.png
+*.restart
+*.REF
+*.out
+
+# Example Output Folders
+/examples/*/output/
