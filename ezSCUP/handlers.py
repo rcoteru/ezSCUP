@@ -18,8 +18,10 @@ from pathlib import Path
 import os, sys
 
 # package imports
-import ezSCUP.settings as cfg
+
 from ezSCUP.structures import FDFSetting
+import ezSCUP.settings as cfg
+import ezSCUP.exceptions
 
 #####################################################################
 ## MODULE STRUCTURE
@@ -61,7 +63,7 @@ class SCUPHandler():
 
     fname = ""                  # loaded file name
     scup_exec = ""              # ScaleUP executable path
-    settings = {}               # Current settings
+    settings = None             # Current settings
     original_settings = {}      # Original settings
 
     #######################################################
@@ -140,7 +142,7 @@ class SCUPHandler():
             print("WARNING: Attempting to overwite original input. Aborting.")
             return 0
 
-        if len(self.settings) == 0:
+        if len(self.settings) == None:
             print("WARNING: No settings file loaded. Aborting.")
             return 0
 
@@ -179,8 +181,13 @@ class SCUPHandler():
     def launch(self, output_file=None):
 
         if len(self.settings) == 0:
-            print("WARNING: No settings file loaded. Aborting simulation")
-            return 0
+            print("WARNING: No settings file loaded.")
+            raise ezSCUP.exceptions.InvalidFDFSetting
+
+        if not os.path.exists(self.scup_exec):
+            print("WARNING: SCUP executable provided does not exist.")
+            raise ezSCUP.exceptions.NoSCUPExecutableDetected
+
 
         if output_file == None:
             # set default value after we know settings are loaded

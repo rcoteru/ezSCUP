@@ -18,3 +18,5 @@
 
 # Output Folders
 /examples/*/output/
+/examples/*/csv/
+/examples/*/plots/

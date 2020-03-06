@@ -63,7 +63,7 @@ class RestartGenerator:
         for j in range(self.nats):         # iter over all atoms
             atom_displacement[self.elements[j]] = np.zeros(3)
 
-        self.cells = np.zeros(list(self.supercell))
+        self.cells = np.zeros(list(self.supercell), dtype="object")
 
         for x in range(self.supercell[0]):
             for y in range(self.supercell[1]):

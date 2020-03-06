@@ -180,10 +180,10 @@ class MCSimulation:
 
         # first and foremost, check if a valid 
         # ScaleUP executable has been configured.
-        if cfg.SCUP_EXEC == None:
+        if cfg.SCUP_EXEC == None or not os.path.exists(cfg.SCUP_EXEC):
 
             print("""
-            WARNING: No executable detected
+            WARNING: No valid executable detected
 
             A path for a valid ScaleUP executable
             must be provided before any simulations
