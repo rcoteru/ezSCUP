@@ -39,7 +39,9 @@ def save_file(fname, headers, columns, sep=","):
     """
 
     if len(headers) != len(columns):
-        print("WARNING: Error writing output file, check header/column number.")
+        print("WARNING: Error writing output file,")
+        print("length of header/column does not match.")
+        print(len(headers), "!=", len(columns))
         return 0
 
     with open(fname, "w") as f:
@@ -57,4 +59,4 @@ def save_file(fname, headers, columns, sep=","):
                     f.write(sep)
             f.write("\n")
     
-    print("File " + fname + " written successfully.\n")
+    print("File " + fname + " written successfully.")

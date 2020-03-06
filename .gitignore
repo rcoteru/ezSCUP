@@ -9,11 +9,12 @@
 /*.egg-info
 /*.egg
 
-# Possible random files
+# Output Files
 *.png
+*.csv
 *.restart
 *.REF
 *.out
 
-# Example Output Folders
+# Output Folders
 /examples/*/output/

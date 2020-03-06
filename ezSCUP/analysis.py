@@ -79,7 +79,7 @@ class ModeAnalyzer():
                         nx, ny, nz = atom_cell
 
                         values[x,y,z] += atom[2]*np.dot(atom[3],
-                            self.config.cells[nx,ny,nz].displacements(atom[0]))
+                            self.config.cells[nx,ny,nz].displacements[atom[0]])
 
         self.values = values
         return values

@@ -31,13 +31,15 @@ cfg.SCUP_EXEC = "/home/raul/Software/scale-up/build_dir/src/scaleup.x"
 
 OVERWRITE = False                           # overwrite old output folder?
 
-SUPERCELL = [3,3,3]                         # shape of the supercell
+SUPERCELL = [2,2,4]                         # shape of the supercell
 ELEMENTS = ["Sr", "Ti", "O"]                # elements in the lattice
 NATS = 5                                    # number of atoms per cell
-TEMPERATURES = np.linspace(10, 300, 1)      # temperatures to simulate
+TEMPERATURES = np.linspace(10, 50, 4)       # temperatures to simulate
 
 cfg.MC_STEPS = 2000                         # MC total steps
 cfg.MC_EQUILIBRATION_STEPS = 500            # MC equilibration steps
+cfg.MC_STEP_INTERVAL = 50                   # MC steps between partial files
+cfg.LATTICE_OUTPUT_INTERVAL = 50            # MC steps between output prints  
 cfg.FIXED_STRAIN_COMPONENTS = [False]*6     # fixed strain components (none)
 
 plot_AFDa =   True                          # plot AFDa distortion angles?
@@ -50,12 +52,11 @@ show_plots =  True                          # show the created plots?
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
-
 #####################################################################
 #            FUNCTIONS TO OBTAIN THE AFD ROTATIONS                  #
 #####################################################################
 
-def read_AFDa(temps):
+def read_AFDa(temp):
 
     """ Calculates the AFDa distortion rotation for each temperature. """
     
@@ -118,35 +119,34 @@ def read_AFDa(temps):
 
     rotations = []
     rotations_err = []
-    for t in temps: # read all files
+    for t in temp: # read all files
 
         config = sim.access(t)
         analyzer.load(config)
 
         cell_zero = config.cells[0,0,0]
 
-        TiO_dist = np.linalg.norm(cell_zero .position["Ti"] - cell_zero.position["03"])
+        TiO_dist = np.linalg.norm(cell_zero.positions["Ti"] - cell_zero.positions["O3"])
 
         unit_cell=[[1,0,0],[0,1,0],[0,0,1]]
 
-       
         # X axis rotation   
         distortions = analyzer.measure(SUPERCELL, unit_cell, AFDa_X)
-        angles = np.arctan(np.abs(TiO_dist/distortions))*180/np.pi
+        angles = np.arctan(np.abs(distortions/TiO_dist))*180/np.pi
 
         x_axis_rot = np.mean(angles)
         x_axis_rot_err = np.std(angles)
 
         # Y axis rotation   
         distortions = analyzer.measure(SUPERCELL, unit_cell, AFDa_Y)
-        angles = np.arctan(np.abs(TiO_dist/distortions))*180/np.pi
+        angles = np.arctan(np.abs(distortions/TiO_dist))*180/np.pi
 
         y_axis_rot = np.mean(angles)
         y_axis_rot_err = np.std(angles)
 
         # Z axis rotation    
         distortions = analyzer.measure(SUPERCELL, unit_cell, AFDa_Z)
-        angles = np.arctan(np.abs(TiO_dist/distortions))*180/np.pi
+        angles = np.arctan(np.abs(distortions/TiO_dist))*180/np.pi
 
         z_axis_rot = np.mean(angles)
         z_axis_rot_err = np.std(angles)
@@ -165,8 +165,6 @@ def read_AFDa(temps):
         else:
             rotations.append(np.array([y_axis_rot, z_axis_rot, x_axis_rot]))
             rotations_err.append(np.array([y_axis_rot_err, z_axis_rot_err, x_axis_rot_err]))
-    
-    print("DONE!\n")
 
     return np.array(rotations), np.array(rotations_err)
 
@@ -175,11 +173,8 @@ def display_AFDa(temps):
     """ Function to generate the AFDa distortion temperature graph. """
 
     angles, angles_err = read_AFDa(temps) # calculating angles from output files
-
-    print("Plotting angle vs temperature...")
-
+    
     # unpack the rotations
-
     xrot = angles[:,0]
     yrot = angles[:,1]
     zrot = angles[:,2]
@@ -188,7 +183,7 @@ def display_AFDa(temps):
     yrot_err = angles_err[:,1]
     zrot_err = angles_err[:,2]
 
-    headers = ["temp", "xrot", "yrot", "zrot"
+    headers = ["temp", "xrot", "yrot", "zrot",
         "xrot_err", "yrot_err", "zrot_err"]
     save_file("AFDa.csv", headers, 
         [temps, xrot, yrot, zrot, xrot_err, yrot_err, zrot_err])
@@ -275,11 +270,11 @@ def display_strain(temps):
 
     headers = ["temp", "sx", "sy", "sz",
         "sx_err", "sy_err", "sz_err"]
-    save_file("cell.csv", headers, 
+    save_file("strain.csv", headers, 
         [temps, sx, sy, sz, sx_err, sy_err, sz_err,])
 
     # plotting 
-    plt.figure("strain_vs_temp.png")
+    plt.figure("strain.png")
 
     plt.errorbar(temps, sx*100, yerr=sx_err, label=r"$\eta_x$", marker ="<") 
     plt.errorbar(temps, sy*100, yerr=sy_err, label=r"$\eta_y$", marker =">") 
@@ -293,7 +288,7 @@ def display_strain(temps):
     plt.legend(frameon = True, fontsize = 14)
     plt.grid(True)
     
-    plt.savefig("strain_vs_temp.png")
+    plt.savefig("strain.png")
     plt.draw()
 
 
@@ -314,24 +309,25 @@ if __name__ == "__main__":
         start = time.time()
         display_AFDa(TEMPERATURES)
         end = time.time()
-        print("\nDONE! Time elapsed: {:d}s".format(end-start))
+        print("\nDONE! Time elapsed: {:.3f}s".format(end-start))
 
     if plot_AFDi: # plot AFDi if needed
         print("\nGenerating AFDi plot...")
         start = time.time()
         # display_AFDi(TEMPERATURES) # NOT IMPLEMENTED
         end = time.time()
-        print("\nDONE! Time elapsed: {:d}s".format(end-start))
+        print("\nDONE! Time elapsed: {:.3f}s".format(end-start))
 
     if plot_strain: # plot strain if needed
         print("\nGenerating strain plot...")
         start = time.time()
         display_strain(TEMPERATURES)
         end = time.time()
-        print("\nDONE! Time elapsed: {:d}s".format(end-start))
+        print("\nDONE! Time elapsed: {:.3f}s".format(end-start))
    
-    print("\nDisplaying selected plots...")
-    plt.show()
+    if show_plots:
+        print("\nDisplaying selected plots...")
+        plt.show()
     
     print("\nEVERYTHING DONE!")
 

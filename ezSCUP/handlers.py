@@ -146,7 +146,13 @@ class SCUPHandler():
 
         f = open(fname, "w")
 
+        if cfg.PRINT_CONF_SETTINGS:
+            print("\nSettings in " + fname + ":")
+
         for k in self.settings:
+
+            if cfg.PRINT_CONF_SETTINGS:
+                print(k, self.settings[k])
 
             if type(self.settings[k]) == FDFSetting:
                 line = k + " " +  str(self.settings[k]) + "\n"
@@ -166,6 +172,8 @@ class SCUPHandler():
                 
                 f.write(r"%endblock " + k + "\n")
 
+        if cfg.PRINT_CONF_SETTINGS:
+                print("\n")
 
 
     def launch(self, output_file=None):

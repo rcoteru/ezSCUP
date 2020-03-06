@@ -19,6 +19,7 @@ from shutil import move,rmtree      # remove output folder
 from pathlib import Path            # general folder management
 import os, sys                      # remove files, get pwd
 import pickle                       # store parameter vectors
+import time                         # check simulation run time
 
 # package imports
 from ezSCUP.parsers import REFParser, RestartParser, OutParser
@@ -215,15 +216,6 @@ class MCSimulation:
             self.strain = [np.zeros(6)]
         else:
             self.strain = [np.array(s, dtype=np.float64) for s in strain]
-
-        """ STRAIN BLOCK EXAMPLE FDF
-        this sets only which components
-        shall vary in the MC run
-
-        %block fix_strain_component
-        T T F F F T
-        %endblock fix_strain_component
-        """
         
         # electric field vector list, optional
         if field == None:
@@ -262,7 +254,7 @@ class MCSimulation:
         sim.load(self.fdf)
 
         # adjust the supercell
-        sim.settings["supercell"] = list(self.supercell)
+        sim.settings["supercell"] = [list(self.supercell)]
 
         # modify FDF according to ezSCUP.settings
         if cfg.MC_STEPS != None:
@@ -284,7 +276,8 @@ class MCSimulation:
                     setting.append("T")
                 else:
                     setting.append("F")
-            sim.settings["fix_strain_component"] = setting
+            print(setting)
+            sim.settings["fix_strain_component"] = [setting]
 
         # check is strains are needed and creates generator
         if strain != None:
@@ -304,8 +297,11 @@ class MCSimulation:
 
         # total number of simulations 
         nsims = self.temp.size*len(self.strain)*len(self.field)*len(self.stress)
-        print("\nStarting calculations...\n")
+        
+        # starting time of the simulation process
+        main_start_time = time.time()
 
+        print("\nStarting calculations...\n")
         for t in self.temp:
             temp_counter = np.where(self.temp == t)[0][0]
             for p in self.stress:
@@ -315,7 +311,11 @@ class MCSimulation:
                     for f in self.field:
                         field_counter = [np.array_equal(f,x) for x in self.field].index(True)
 
+                        # update simulation counter
                         total_counter += 1
+
+                        # starting time of the current configuration
+                        conf_start_time = time.time()
 
                         print("##############################")
                         print("Configuration " + str(total_counter) + " out of " + str(nsims))
@@ -366,8 +366,14 @@ class MCSimulation:
                         for f in files:
                             if sim_name in f:
                                 move(f, output_folder)
+                        
+                        # finish time of the current conf
+                        conf_finish_time = time.time()
 
-                        print("\nAll files stored in output/" + subfolder_name + " succesfully.\n")
+                        conf_time = conf_finish_time-conf_start_time
+
+                        print("\n Configuration finished! (time elapsed: {:.3f}s)".format(conf_time))
+                        print("All files stored in output/" + subfolder_name + " succesfully.\n")
 
         # save simulation setup file 
         print("Saving simulation setup file... ")
@@ -394,7 +400,11 @@ class MCSimulation:
         if strain != None:
             os.remove("temp.restart")
 
+        main_finished_time = time.time()
+        main_time = main_finished_time - main_start_time
+
         print("Simulation process complete!")
+        print("Total simulation time: {:.3f}s".format(main_time))
 
     #######################################################
 
@@ -524,7 +534,7 @@ class MCConfiguration:
                 for z in range(self.supercell[2]):
 
                     self.cells[x,y,z].displacements = {}
-                    for atom in self.cells[x,y,z].pos:
+                    for atom in self.cells[x,y,z].positions:
                         self.cells[x,y,z].displacements[atom] = np.zeros(3)
 
         # add all strains and displacements
@@ -536,7 +546,7 @@ class MCConfiguration:
             for x in range(self.supercell[0]):
                 for y in range(self.supercell[1]):
                     for z in range(self.supercell[2]):
-                        for atom in self.cells[x,y,z].disp: 
+                        for atom in self.cells[x,y,z].displacements: 
                             self.cells[x,y,z].displacements[atom] += self.resp.cells[x,y,z].displacements[atom]
 
         # divide by the number of measurementes
@@ -545,7 +555,7 @@ class MCConfiguration:
         for x in range(self.supercell[0]):
                 for y in range(self.supercell[1]):
                     for z in range(self.supercell[2]):
-                        for atom in self.cells[x,y,z].disp: 
+                        for atom in self.cells[x,y,z].displacements: 
                             self.cells[x,y,z].displacements[atom] = self.cells[x,y,z].displacements[atom]/self.nmeas
         
 

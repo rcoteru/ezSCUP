@@ -28,6 +28,10 @@ SIMULATION_SETUP_FILE = "simulation.info"
 # regular expression to use when parsing for lattice data
 LT_SEARCH_WORD = "LT:"
 
+# whether to print individual configuration settings, mainly 
+# for debugging purposes
+PRINT_CONF_SETTINGS = True
+
 #####################################################################
 ##  FDF SETTINGS
 #####################################################################

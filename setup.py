@@ -15,6 +15,11 @@ setup(name='ezSCUP',
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: OS Independent",
         ],
+      install_requires=[
+          "numpy",
+          "pandas",
+          "matplotlib"
+      ],
       packages=find_packages(),
       zip_safe=False,
       python_requires='>=3.6'
