@@ -29,22 +29,22 @@ import ezSCUP.settings as cfg
 # IMPORTANT: location of the Scale-Up executable in the system
 cfg.SCUP_EXEC = "/home/raul/Software/scale-up/build_dir/src/scaleup.x"
 
-OVERWRITE = False                           # overwrite old output folder?
+OVERWRITE = False                          # overwrite old output folder?
 
 SUPERCELL = [4,4,3]                         # shape of the supercell
 ELEMENTS = ["Sr", "Ti", "O"]                # elements in the lattice
 NATS = 5                                    # number of atoms per cell
-TEMPERATURES = np.linspace(25, 100, 4)      # temperatures to simulate
+TEMPERATURES = np.linspace(20, 100, 5)      # temperatures to simulate
 STRAINS = [                                 # strains to simulate
-    [+0.02, +0.02, 0., 0., 0., 0.],
+    [+0.03, +0.03, 0., 0., 0., 0.],
     [+0.00, +0.00, 0., 0., 0., 0.],
-    [-0.02, -0.02, 0., 0., 0., 0.]
+    [-0.03, -0.03, 0., 0., 0., 0.]
 ]   # +-2% and 0% cell strain in the x and y direction
 
-cfg.MC_STEPS = 2000                         # MC total steps
-cfg.MC_EQUILIBRATION_STEPS = 500            # MC equilibration steps
+cfg.MC_STEPS = 3000                         # MC total steps
+cfg.MC_EQUILIBRATION_STEPS = 1000           # MC equilibration steps
 cfg.MC_STEP_INTERVAL = 50                   # MC steps between partial files
-cfg.LATTICE_OUTPUT_INTERVAL = 50            # MC steps between output prints  
+cfg.LATTICE_OUTPUT_INTERVAL = 10            # MC steps between output prints  
 # fixed strain components: xx, yy, xy (Voigt notation)
 cfg.FIXED_STRAIN_COMPONENTS = [True, True, False, False, False, True]
 
@@ -121,6 +121,7 @@ def display_AFD(temp, strain, mode="a"):
             data[str(s)] = (angles, angles_err)
 
     # plotting
+    colors = ["black", "blue", "red", "green", "yellow"]
     plt.figure("AFD" + mode + ".png")
     for i, s in enumerate(strain):
 
@@ -140,14 +141,16 @@ def display_AFD(temp, strain, mode="a"):
         save_file("csv/AFD" + mode  + str(i) + ".csv", headers, 
             [temp, xrot, yrot, zrot, xrot_err, yrot_err, zrot_err])
 
-        plt.errorbar(temp, zrot, yerr=zrot_err, label="$S_{xy}="+str(s[0])+"$", marker ="^")
+        plt.errorbar(temp, xrot, yerr=xrot_err, c=colors[i], marker ="<")
+        plt.errorbar(temp, yrot, yerr=yrot_err, c=colors[i], marker =">")
+        plt.errorbar(temp, zrot, yerr=zrot_err, c=colors[i], marker ="^", label="$S_{xy}="+str(s[0])+"$")
     
     plt.tight_layout(pad = 3)
 
     plt.xlabel("T (K)", fontsize = 14)
     plt.ylabel(r"$AFD_z^{" + mode + "}$ (deg)", fontsize = 14)
 
-    plt.ylim(0,8)
+    #plt.ylim(0,8)
     
     plt.legend(frameon = True, fontsize = 14)
     plt.grid(True)
@@ -209,6 +212,7 @@ def display_FE(temp, strain):
         data[str(s)] = (dists, dists_err)
 
     # plotting
+    colors = ["black", "blue", "red", "green", "yellow"]
     plt.figure("FE.png")
     for i, s in enumerate(strain):
 
@@ -228,7 +232,9 @@ def display_FE(temp, strain):
         save_file("csv/FE" + str(i) + ".csv", headers, 
             [temp, xdist, ydist, zdist, xdist_err, ydist_err, zdist_err])
 
-        plt.errorbar(temp, np.abs(zdist), yerr=zdist, label="$S_{xy}="+str(s[0])+"$", marker ="^")
+        plt.errorbar(temp, np.abs(xdist), yerr=xdist_err, c=colors[i], marker ="<")
+        plt.errorbar(temp, np.abs(ydist), yerr=ydist_err, c=colors[i], marker =">")
+        plt.errorbar(temp, np.abs(zdist), yerr=zdist_err, c=colors[i], marker ="^", label="$S_{xy}="+str(s[0])+"$")
     
     plt.tight_layout(pad = 3)
 
@@ -260,8 +266,6 @@ def read_strain(temp, s):
         sim.access(t, s=s)
         data = sim.parser.lattice_output()
 
-        print(data.head())
-
         sx = data["Strn_xx"].mean()
         sy = data["Strn_yy"].mean()
         sz = data["Strn_zz"].mean()
@@ -290,6 +294,7 @@ def display_strain(temp, strain):
         data[str(s)] = (stra, stra_err)
     
     # plotting 
+    colors = ["black", "blue", "red", "green", "yellow"]
     plt.figure("strain.png")
     for i, s in enumerate(strain):
         
@@ -309,7 +314,7 @@ def display_strain(temp, strain):
         save_file("csv/strain" + str(i) + ".csv", headers, 
             [temp, sx, sy, sz, sx_err, sy_err, sz_err,])
 
-        plt.errorbar(temp, sz*100, yerr=sz_err*100, label="$S_{xy}="+str(s[0])+"$", marker ="^")
+        plt.errorbar(temp, sz*100, yerr=sz_err*100, label="$S_{xy}="+str(s[0])+"$", marker ="^", c=colors[i])
 
     plt.tight_layout(pad = 3)
 
@@ -367,6 +372,7 @@ def display_polarization(temp, strain):
         data[str(s)] = (pol, pol_err)
     
     # plotting 
+    colors = ["black", "blue", "red", "green", "yellow"]
     plt.figure("polarization.png")
     for i, s in enumerate(strain):
         
@@ -386,7 +392,9 @@ def display_polarization(temp, strain):
         save_file("csv/polarization" + str(i) + ".csv", headers, 
             [temp, px, py, pz, px_err, py_err, pz_err,])
 
-        plt.errorbar(temp, np.abs(pz), yerr=pz_err, label="$S_{xy}="+str(s[0])+"$", marker ="^")
+        plt.errorbar(temp, np.abs(px), yerr=px_err, marker ="<", c=colors[i])
+        plt.errorbar(temp, np.abs(py), yerr=py_err, marker =">", c=colors[i])
+        plt.errorbar(temp, np.abs(pz), yerr=pz_err, marker ="^", c=colors[i], label="$S_{xy}="+str(s[0])+"$")
 
     plt.tight_layout(pad = 3)
 
