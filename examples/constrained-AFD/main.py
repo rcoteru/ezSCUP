@@ -18,7 +18,7 @@ import numpy as np
 
 # ezSCUP imports
 from ezSCUP.simulations import MCSimulation, MCConfiguration, MCSimulationParser
-from ezSCUP.analysis import ModeAnalyzer
+from ezSCUP.analysis import perovskite_AFD, perovskite_FE
 from ezSCUP.files import save_file
 import ezSCUP.settings as cfg
 
@@ -31,10 +31,10 @@ cfg.SCUP_EXEC = "/home/raul/Software/scale-up/build_dir/src/scaleup.x"
 
 OVERWRITE = False                           # overwrite old output folder?
 
-SUPERCELL = [3,3,3]                         # shape of the supercell
+SUPERCELL = [4,4,3]                         # shape of the supercell
 ELEMENTS = ["Sr", "Ti", "O"]                # elements in the lattice
 NATS = 5                                    # number of atoms per cell
-TEMPERATURES = np.linspace(10, 50, 4)       # temperatures to simulate
+TEMPERATURES = np.linspace(25, 100, 4)      # temperatures to simulate
 STRAINS = [                                 # strains to simulate
     [+0.02, +0.02, 0., 0., 0., 0.],
     [+0.00, +0.00, 0., 0., 0., 0.],
@@ -65,102 +65,13 @@ show_plots =  True                          # show the created plots?
 
 def read_AFD(temp, s, mode="a"):
 
-    """ Calculates the AFD distortion rotation for each temperature. """
-    
-    # Ox, Oy, Oz = O3, O2, O1
+    """ Calculates the average AFD rotations for each temperature. """
+   
+    if mode != "a" and mode != "i":
+        raise NotImplementedError
 
     # create a simulation parser
     sim = MCSimulationParser()
-
-    # create the mode analyzer, so as to
-    # project the dirstortions on the lattice
-    analyzer = ModeAnalyzer()
-
-    ### DISTORTIONS ###
-
-    AFDa_X=[
-            # atom, hopping, weight, target vector
-            # "lower" cell
-            ["O2",[0, 0, 0],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[0, 0, 0],1./8.,[ 0.0, 1.0, 0.0]],
-            ["O2",[0, 0, 1],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[0, 1, 0],1./8.,[ 0.0,-1.0, 0.0]],
-            # "upper" cell
-            ["O2",[1, 0, 0],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[1, 0, 0],1./8.,[ 0.0,-1.0, 0.0]],
-            ["O2",[1, 0, 1],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[1, 1, 0],1./8.,[ 0.0, 1.0, 0.0]]
-        ]
-
-    AFDa_Y=[
-            # atom, hopping, weight, target vector
-            # lower cell
-            ["O3",[0, 0, 0],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[0, 0, 0],1./8.,[-1.0, 0.0, 0.0]],
-            ["O3",[1, 0, 0],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[0, 0, 1],1./8.,[ 1.0, 0.0, 0.0]],
-            # upper cell
-            ["O3",[0, 1, 0],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[0, 1, 0],1./8.,[ 1.0, 0.0, 0.0]],
-            ["O3",[1, 1, 0],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[0, 1, 1],1./8.,[-1.0, 0.0, 0.0]]
-        ]
-
-    AFDa_Z=[
-            # atom, hopping, weight, target vector
-            # "lower" cell
-            ["O3",[0, 0, 0],1./8.,[ 0.0,-1.0, 0.0]],
-            ["O2",[0, 0, 0],1./8.,[ 1.0, 0.0, 0.0]],
-            ["O3",[1, 0, 0],1./8.,[ 0.0, 1.0, 0.0]],
-            ["O2",[0, 1, 0],1./8.,[-1.0, 0.0, 0.0]],
-            # "upper" cell
-            ["O3",[0, 0, 1],1./8.,[ 0.0, 1.0, 0.0]],
-            ["O2",[0, 0, 1],1./8.,[-1.0, 0.0, 0.0]],
-            ["O3",[1, 0, 1],1./8.,[ 0.0,-1.0, 0.0]],
-            ["O2",[0, 1, 1],1./8.,[ 1.0, 0.0, 0.0]]
-        ]
-
-    AFDi_X=[
-            # atom, hopping, weight, target vector
-            # "lower" cell
-            ["O2",[0, 0, 0],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[0, 0, 0],1./8.,[ 0.0, 1.0, 0.0]],
-            ["O2",[0, 0, 1],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[0, 1, 0],1./8.,[ 0.0,-1.0, 0.0]],
-            # "upper" cell
-            ["O2",[1, 0, 0],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[1, 0, 0],1./8.,[ 0.0, 1.0, 0.0]],
-            ["O2",[1, 0, 1],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[1, 1, 0],1./8.,[ 0.0,-1.0, 0.0]]
-        ]
-
-    AFDi_Y=[
-            # atom, hopping, weight, target vector
-            # lower cell
-            ["O3",[0, 0, 0],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[0, 0, 0],1./8.,[-1.0, 0.0, 0.0]],
-            ["O3",[1, 0, 0],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[0, 0, 1],1./8.,[ 1.0, 0.0, 0.0]],
-            # upper cell
-            ["O3",[0, 1, 0],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[0, 1, 0],1./8.,[-1.0, 0.0, 0.0]],
-            ["O3",[1, 1, 0],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[0, 1, 1],1./8.,[ 1.0, 0.0, 0.0]]
-        ]
-
-    AFDi_Z=[
-            # atom, hopping, weight, target vector
-            # "lower" cell
-            ["O3",[0, 0, 0],1./8.,[ 0.0,-1.0, 0.0]],
-            ["O2",[0, 0, 0],1./8.,[ 1.0, 0.0, 0.0]],
-            ["O3",[1, 0, 0],1./8.,[ 0.0, 1.0, 0.0]],
-            ["O2",[0, 1, 0],1./8.,[-1.0, 0.0, 0.0]],
-            # "upper" cell
-            ["O3",[0, 0, 1],1./8.,[ 0.0,-1.0, 0.0]],
-            ["O2",[0, 0, 1],1./8.,[ 1.0, 0.0, 0.0]],
-            ["O3",[1, 0, 1],1./8.,[ 0.0, 1.0, 0.0]],
-            ["O2",[0, 1, 1],1./8.,[-1.0, 0.0, 0.0]]
-        ]
 
     ###################
 
@@ -168,44 +79,20 @@ def read_AFD(temp, s, mode="a"):
     rotations_err = []
     for t in temp: # read all files
 
+        # Ox, Oy, Oz = O3, O2, O1
         config = sim.access(t, s=s)
-        analyzer.load(config)
+        labels = ["Sr", "Ti", "O3", "O2", "O1"]
 
-        cell_zero = config.cells[0,0,0]
+        x_angles, y_angles, z_angles = perovskite_AFD(config, labels, mode)
 
-        TiO_dist = np.linalg.norm(cell_zero.positions["Ti"] - cell_zero.positions["O3"])
+        x_axis_rot = np.mean(np.abs(x_angles))
+        x_axis_rot_err = np.std(np.abs(x_angles))
+ 
+        y_axis_rot = np.mean(np.abs(y_angles))
+        y_axis_rot_err = np.std(np.abs(y_angles))
 
-        unit_cell=[[1,0,0],[0,1,0],[0,0,1]]
-
-        # X axis rotation  
-        if mode == "a":
-            distortions = analyzer.measure(SUPERCELL, unit_cell, AFDa_X)
-        else:
-            distortions = analyzer.measure(SUPERCELL, unit_cell, AFDi_X)
-        angles = np.arctan(np.abs(distortions/TiO_dist))*180/np.pi
-
-        x_axis_rot = np.mean(angles)
-        x_axis_rot_err = np.std(angles)
-
-        # Y axis rotation   
-        if mode == "a":
-            distortions = analyzer.measure(SUPERCELL, unit_cell, AFDa_Y)
-        else:
-            distortions = analyzer.measure(SUPERCELL, unit_cell, AFDi_Y)
-        angles = np.arctan(np.abs(distortions/TiO_dist))*180/np.pi
-
-        y_axis_rot = np.mean(angles)
-        y_axis_rot_err = np.std(angles)
-
-        # Z axis rotation    
-        if mode == "a":
-            distortions = analyzer.measure(SUPERCELL, unit_cell, AFDa_Z)
-        else:
-            distortions = analyzer.measure(SUPERCELL, unit_cell, AFDi_Z)
-        angles = np.arctan(np.abs(distortions/TiO_dist))*180/np.pi
-
-        z_axis_rot = np.mean(angles)
-        z_axis_rot_err = np.std(angles)
+        z_axis_rot = np.mean(np.abs(z_angles))
+        z_axis_rot_err = np.std(np.abs(z_angles))
 
         rots = np.array([x_axis_rot, y_axis_rot, z_axis_rot])
         rots_err = np.array([x_axis_rot_err, y_axis_rot_err, z_axis_rot_err])
@@ -215,22 +102,13 @@ def read_AFD(temp, s, mode="a"):
 
     return np.array(rotations), np.array(rotations_err)
 
+
 def display_AFD(temp, strain, mode="a"):
 
     """ Function to generate the AFD distortion temperature graph. """
 
     if mode != "a" and mode != "i":
         raise NotImplementedError
-
-    try: #create the "plots" folder if needed
-        os.mkdir("plots")
-    except FileExistsError:
-        pass
-
-    try: # create the "csv" folder if needed
-        os.mkdir("csv")
-    except FileExistsError:
-        pass
 
     # calculating angles from output files
     data = {}
@@ -283,78 +161,10 @@ def display_AFD(temp, strain, mode="a"):
 
 def read_FE(temp, s):
 
-    """ Calculates the AFD distortion rotation for each temperature. """
+    """ Calculates the FE average distortions for each temperature. """
     
-    # Ox, Oy, Oz = O3, O2, O1
-
     # create a simulation parser
     sim = MCSimulationParser()
-
-    # create the mode analyzer, so as to
-    # project the dirstortions on the lattice
-    analyzer = ModeAnalyzer()
-
-    ### DISTORTIONS ###
-
-    FE_X=[  # atom, hopping, weight, target vector
-            # "frame"
-            ["Sr", [0, 0, 0], 1./15., [ 1.0, 0.0, 0.0]],
-            ["Sr", [1, 0, 0], 1./15., [ 1.0, 0.0, 0.0]],
-            ["Sr", [1, 1, 0], 1./15., [ 1.0, 0.0, 0.0]],
-            ["Sr", [0, 1, 0], 1./15., [ 1.0, 0.0, 0.0]],
-            ["Sr", [0, 0, 1], 1./15., [ 1.0, 0.0, 0.0]],
-            ["Sr", [1, 0, 1], 1./15., [ 1.0, 0.0, 0.0]],
-            ["Sr", [1, 1, 1], 1./15., [ 1.0, 0.0, 0.0]],
-            ["Sr", [0, 1, 1], 1./15., [ 1.0, 0.0, 0.0]],
-            # "octahedra"
-            ["Ti", [0, 0, 0], 1./15., [ 1.0, 0.0, 0.0]],
-            ["O3", [0, 0, 0], 1./15., [-1.0, 0.0, 0.0]], 
-            ["O3", [1, 0, 0], 1./15., [-1.0, 0.0, 0.0]],
-            ["O2", [0, 0, 0], 1./15., [-1.0, 0.0, 0.0]],
-            ["O2", [0, 1, 0], 1./15., [-1.0, 0.0, 0.0]],
-            ["O1", [0, 0, 0], 1./15., [-1.0, 0.0, 0.0]],
-            ["O1", [0, 0, 1], 1./15., [-1.0, 0.0, 0.0]]
-        ]
-
-    FE_Y=[  # atom, hopping, weight, target vector
-            # "frame"
-            ["Sr", [0, 0, 0], 1./15., [ 0.0, 1.0, 0.0]],
-            ["Sr", [1, 0, 0], 1./15., [ 0.0, 1.0, 0.0]],
-            ["Sr", [1, 1, 0], 1./15., [ 0.0, 1.0, 0.0]],
-            ["Sr", [0, 1, 0], 1./15., [ 0.0, 1.0, 0.0]],
-            ["Sr", [0, 0, 1], 1./15., [ 0.0, 1.0, 0.0]],
-            ["Sr", [1, 0, 1], 1./15., [ 0.0, 1.0, 0.0]],
-            ["Sr", [1, 1, 1], 1./15., [ 0.0, 1.0, 0.0]],
-            ["Sr", [0, 1, 1], 1./15., [ 0.0, 1.0, 0.0]],
-            # "octahedra"
-            ["Ti", [0, 0, 0], 1./15., [ 0.0, 1.0, 0.0]],
-            ["O3", [0, 0, 0], 1./15., [ 0.0,-1.0, 0.0]], 
-            ["O3", [1, 0, 0], 1./15., [ 0.0,-1.0, 0.0]],
-            ["O2", [0, 0, 0], 1./15., [ 0.0,-1.0, 0.0]],
-            ["O2", [0, 1, 0], 1./15., [ 0.0,-1.0, 0.0]],
-            ["O1", [0, 0, 0], 1./15., [ 0.0,-1.0, 0.0]],
-            ["O1", [0, 0, 1], 1./15., [ 0.0,-1.0, 0.0]]
-        ]
-
-    FE_Z=[  # atom, hopping, weight, target vector
-            # "frame"
-            ["Sr", [0, 0, 0], 1./15., [0.0, 0.0, 1.0]],
-            ["Sr", [1, 0, 0], 1./15., [0.0, 0.0, 1.0]],
-            ["Sr", [1, 1, 0], 1./15., [0.0, 0.0, 1.0]],
-            ["Sr", [0, 1, 0], 1./15., [0.0, 0.0, 1.0]],
-            ["Sr", [0, 0, 1], 1./15., [0.0, 0.0, 1.0]],
-            ["Sr", [1, 0, 1], 1./15., [0.0, 0.0, 1.0]],
-            ["Sr", [1, 1, 1], 1./15., [0.0, 0.0, 1.0]],
-            ["Sr", [0, 1, 1], 1./15., [0.0, 0.0, 1.0]],
-            # "octahedra"
-            ["Ti", [0, 0, 0], 1./15., [0.0, 0.0, 1.0]],
-            ["O3", [0, 0, 0], 1./15., [0.0, 0.0,-1.0]], 
-            ["O3", [1, 0, 0], 1./15., [0.0, 0.0,-1.0]],
-            ["O2", [0, 0, 0], 1./15., [0.0, 0.0,-1.0]],
-            ["O2", [0, 1, 0], 1./15., [0.0, 0.0,-1.0]],
-            ["O1", [0, 0, 0], 1./15., [0.0, 0.0,-1.0]],
-            ["O1", [0, 0, 1], 1./15., [0.0, 0.0,-1.0]]
-        ]
 
     ###################
 
@@ -362,28 +172,23 @@ def read_FE(temp, s):
     distortions_err = []
     for t in temp: # read all files
 
+        # Ox, Oy, Oz = O3, O2, O1
         config = sim.access(t, s=s)
-        analyzer.load(config)
+        labels = ["Sr", "Ti", "O3", "O2", "O1"]
 
-        #cell_zero = config.cells[0,0,0]
-        #TiO_dist = np.linalg.norm(cell_zero.positions["Ti"] - cell_zero.positions["O3"])
-
-        unit_cell=[[1,0,0],[0,1,0],[0,0,1]]
+        x_dist, y_dist, z_dist = perovskite_FE(config, labels)
 
         # X axis distortion  
-        distorts = analyzer.measure(SUPERCELL, unit_cell, FE_X)
-        x_axis_dist = np.mean(distorts)
-        x_axis_dist_err = np.std(distorts)
+        x_axis_dist = np.mean(x_dist)
+        x_axis_dist_err = np.std(x_dist)
 
-        # X axis distortion  
-        distorts = analyzer.measure(SUPERCELL, unit_cell, FE_Y)
-        y_axis_dist = np.mean(distorts)
-        y_axis_dist_err = np.std(distorts)
+        # Y axis distortion
+        y_axis_dist = np.mean(y_dist)
+        y_axis_dist_err = np.std(y_dist)
 
-        # X axis distortion  
-        distorts = analyzer.measure(SUPERCELL, unit_cell, FE_Z)
-        z_axis_dist = np.mean(distorts)
-        z_axis_dist_err = np.std(distorts)
+        # Z axis distortion
+        z_axis_dist = np.mean(z_dist)
+        z_axis_dist_err = np.std(z_dist)
 
         dists = np.array([x_axis_dist, y_axis_dist, z_axis_dist])
         dists_err = np.array([x_axis_dist_err, y_axis_dist_err, z_axis_dist_err])
@@ -396,16 +201,6 @@ def read_FE(temp, s):
 def display_FE(temp, strain):
 
     """ Function to generate the FE distortion temperature graph. """
-
-    try: #create the "plots" folder if needed
-        os.mkdir("plots")
-    except FileExistsError:
-        pass
-
-    try: # create the "csv" folder if needed
-        os.mkdir("csv")
-    except FileExistsError:
-        pass
 
     # calculating angles from output files
     data = {}
@@ -433,7 +228,7 @@ def display_FE(temp, strain):
         save_file("csv/FE" + str(i) + ".csv", headers, 
             [temp, xdist, ydist, zdist, xdist_err, ydist_err, zdist_err])
 
-        plt.errorbar(temp, zdist, yerr=zdist, label="$S_{xy}="+str(s[0])+"$", marker ="^")
+        plt.errorbar(temp, np.abs(zdist), yerr=zdist, label="$S_{xy}="+str(s[0])+"$", marker ="^")
     
     plt.tight_layout(pad = 3)
 
@@ -465,13 +260,15 @@ def read_strain(temp, s):
         sim.access(t, s=s)
         data = sim.parser.lattice_output()
 
+        print(data.head())
+
         sx = data["Strn_xx"].mean()
         sy = data["Strn_yy"].mean()
-        sz = data["Strn_yy"].mean()
+        sz = data["Strn_zz"].mean()
 
         sx_err = data["Strn_xx"].std()
         sy_err = data["Strn_yy"].std()
-        sz_err = data["Strn_yy"].std()
+        sz_err = data["Strn_zz"].std()
              
         stra = np.array([sx,sy,sz])
         stra_err = np.array([sx_err,sy_err,sz_err])
@@ -485,16 +282,6 @@ def read_strain(temp, s):
 def display_strain(temp, strain):
 
     """Generates the strain vs temperature graph."""
-
-    try: #create the "plots" folder if needed
-        os.mkdir("plots")
-    except FileExistsError:
-        pass
-
-    try: # create the "csv" folder if needed
-        os.mkdir("csv")
-    except FileExistsError:
-        pass
 
     data = {}
     # reading strains from output files
@@ -573,16 +360,6 @@ def display_polarization(temp, strain):
 
     """Generates the strain vs temperature graph."""
 
-    try: #create the "plots" folder if needed
-        os.mkdir("plots")
-    except FileExistsError:
-        pass
-
-    try: # create the "csv" folder if needed
-        os.mkdir("csv")
-    except FileExistsError:
-        pass
-
     data = {}
     # reading polarization from output files
     for s in strain:
@@ -609,7 +386,7 @@ def display_polarization(temp, strain):
         save_file("csv/polarization" + str(i) + ".csv", headers, 
             [temp, px, py, pz, px_err, py_err, pz_err,])
 
-        plt.errorbar(temp, pz, yerr=pz_err, label="$S_{xy}="+str(s[0])+"$", marker ="^")
+        plt.errorbar(temp, np.abs(pz), yerr=pz_err, label="$S_{xy}="+str(s[0])+"$", marker ="^")
 
     plt.tight_layout(pad = 3)
 
@@ -633,6 +410,16 @@ if __name__ == "__main__":
 
     # simulate and properly store output
     sim.launch("input.fdf", temp=TEMPERATURES, strain=STRAINS)
+
+    try: #create the "plots" folder if needed
+        os.mkdir("plots")
+    except FileExistsError:
+        pass
+
+    try: # create the "csv" folder if needed
+        os.mkdir("csv")
+    except FileExistsError:
+        pass        
 
     if plot_AFDa: # plot AFDa if needed
         print("\nGenerating AFDa plot...")

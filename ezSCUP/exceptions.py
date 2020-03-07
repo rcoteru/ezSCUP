@@ -32,6 +32,10 @@ class InvalidLabel(Error):
    """Raised when an invalid element label is given."""
    pass
 
+class InvalidLabelList(Error):
+   """Raised when an invalid element label is given."""
+   pass
+
 class InvalidMCConfiguration(Error):
    """Raised when an invalid MCConfiguration is given."""
    pass

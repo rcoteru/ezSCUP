@@ -84,7 +84,7 @@ class RestartParser:
     ncells = 0          # number of cells
     nats = 0            # number of atoms per cell
     nels = 0            # number of distinct atomic elements
-    elements = []       # elements in the lattice, in order
+    elements = []       # elements in the lattice, in ezSCUP notation
     strains = []        # strains, in Voigt notation (percent variation)
     cells = {}          # loaded cell data
 

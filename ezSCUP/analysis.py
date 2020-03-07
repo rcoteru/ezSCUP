@@ -25,6 +25,7 @@ import ezSCUP.exceptions
 #####################################################################
 
 # class ModeProjector()
+
 # func octahedra_rotation()
 
 #####################################################################
@@ -33,7 +34,7 @@ import ezSCUP.exceptions
 
 class ModeAnalyzer():
 
-    """ TODO DOCUMENTATION"""
+    """ TODO DOCUMENTATION """
 
     config = None    
     
@@ -86,98 +87,302 @@ class ModeAnalyzer():
 
         #######################################################
 
-        
-
 
 #####################################################################
 ## FUNCTION DEFINITIONS
 #####################################################################
 
-def octahedra_rotation(cell, no, nx, ny ,nz):
+def perovskite_AFD(config, labels, mode="a"):
 
-    """
-        Calculates the rotation of the octahedron in the given cell.
+    #TODO DOCUMENTATION
 
-        Parameters:
-        ----------
+    if mode != "a" and mode != "i":
+        raise NotImplementedError
 
-        - cell  (Cell): cell in which to perform the calculation
+    if not isinstance(config, MCConfiguration):
+        raise ezSCUP.exceptions.InvalidMCConfiguration
 
-        - no (string): name of the central atom
-
-        - nx (string): name of the atom in the x direction
-
-        - ny (string): name of the atom in the y direction
-
-        - nz (string): name of the atom in the z direction
-
-    """
-
-    # check if a valid cell was given
-    if not isinstance(cell, Cell):
-            raise ezSCUP.exceptions.InvalidCell
-
-    # check if all labels are valid
-    labels = [no, nx, ny, nz]
-    for l in labels:
-        if l not in cell.elements:
-            raise ezSCUP.exceptions.InvalidLabel("Label " + str(l) + " unrecognized.")
-
-    def normalize(v):
-        return v/np.linalg.norm(v)
-
-    def to_degrees(v):
-        return v*180./np.pi
-
-    ti_old = cell.positions[no]
+    if not isinstance(labels, list):
+        raise ezSCUP.exceptions.InvalidLabelList
     
-    ox_old = cell.positions[nx] - ti_old
-    oy_old = cell.positions[ny] - ti_old
-    oz_old = cell.positions[nz] - ti_old
+    for l in labels:
+        if l not in config.elements:
+            raise ezSCUP.exceptions.InvalidLabel
 
-    ti_new = cell.positions[no] + cell.displacements[no]
- 
-    ox_new = cell.positions[nx] + cell.displacements[nx] - ti_new
-    oy_new = cell.positions[ny] + cell.displacements[ny] - ti_new
-    oz_new = cell.positions[nz] + cell.displacements[nz] - ti_new
+    B, Ox, Oy, Oz = labels[1:]
 
-    # x axis rotation ---------------------------
-    # yz plane projection
+    analyzer = ModeAnalyzer()
+    analyzer.load(config)    
 
-    yz_oy_old = normalize(oy_old[1:])
-    yz_oy_new = normalize(oy_new[1:])
-    oy_rot = np.arccos(np.dot(yz_oy_old, yz_oy_new))
+    unit_cell=[[1,0,0],[0,1,0],[0,0,1]]
 
-    yz_oz_old = normalize(oz_old[1:])
-    yz_oz_new = normalize(oz_new[1:])
-    oz_rot = np.arccos(np.dot(yz_oz_old, yz_oz_new))
+    cell_zero = config.cells[0,0,0]
+    BO_dist = np.linalg.norm(cell_zero.positions[B] - cell_zero.positions[Oz])
 
-    x_axis_rot = to_degrees(np.mean([oy_rot, oz_rot]))
+    AFDa_X=[
+            # atom, hopping, weight, target vector
+            # "lower" cell
+            [Oy, [0, 0, 0],1./8.,[ 0.0, 0.0,-1.0]],
+            [Oz, [0, 0, 0],1./8.,[ 0.0, 1.0, 0.0]],
+            [Oy, [0, 0, 1],1./8.,[ 0.0, 0.0, 1.0]],
+            [Oz, [0, 1, 0],1./8.,[ 0.0,-1.0, 0.0]],
+            # "upper" cell
+            [Oy, [1, 0, 0],1./8.,[ 0.0, 0.0, 1.0]],
+            [Oz, [1, 0, 0],1./8.,[ 0.0,-1.0, 0.0]],
+            [Oy, [1, 0, 1],1./8.,[ 0.0, 0.0,-1.0]],
+            [Oz, [1, 1, 0],1./8.,[ 0.0, 1.0, 0.0]]
+        ]
 
-    # y axis rotation ---------------------------
-    # xz plane projection
+    AFDa_Y=[
+            # atom, hopping, weight, target vector
+            # lower cell
+            [Ox, [0, 0, 0],1./8.,[ 0.0, 0.0, 1.0]],
+            [Oz, [0, 0, 0],1./8.,[-1.0, 0.0, 0.0]],
+            [Ox, [1, 0, 0],1./8.,[ 0.0, 0.0,-1.0]],
+            [Oz, [0, 0, 1],1./8.,[ 1.0, 0.0, 0.0]],
+            # upper cell
+            [Ox, [0, 1, 0],1./8.,[ 0.0, 0.0,-1.0]],
+            [Oz, [0, 1, 0],1./8.,[ 1.0, 0.0, 0.0]],
+            [Ox, [1, 1, 0],1./8.,[ 0.0, 0.0, 1.0]],
+            [Oz, [0, 1, 1],1./8.,[-1.0, 0.0, 0.0]]
+        ]
 
-    xz_ox_old = normalize(ox_old[::2])
-    xz_ox_new = normalize(ox_new[::2])
-    ox_rot = np.arccos(np.dot(xz_ox_old, xz_ox_new))
+    AFDa_Z=[
+            # atom, hopping, weight, target vector
+            # "lower" cell
+            [Ox, [0, 0, 0],1./8.,[ 0.0,-1.0, 0.0]],
+            [Oy, [0, 0, 0],1./8.,[ 1.0, 0.0, 0.0]],
+            [Ox, [1, 0, 0],1./8.,[ 0.0, 1.0, 0.0]],
+            [Oy, [0, 1, 0],1./8.,[-1.0, 0.0, 0.0]],
+            # "upper" cell
+            [Ox, [0, 0, 1],1./8.,[ 0.0, 1.0, 0.0]],
+            [Oy, [0, 0, 1],1./8.,[-1.0, 0.0, 0.0]],
+            [Ox, [1, 0, 1],1./8.,[ 0.0,-1.0, 0.0]],
+            [Oy, [0, 1, 1],1./8.,[ 1.0, 0.0, 0.0]]
+        ]
 
-    xz_oz_old = normalize(oz_old[::2])
-    xz_oz_new = normalize(oz_new[::2])
-    oz_rot = np.arccos(np.dot(xz_oz_old, xz_oz_new))
+    AFDi_X=[
+            # atom, hopping, weight, target vector
+            # "lower" cell
+            [Oy, [0, 0, 0],1./8.,[ 0.0, 0.0,-1.0]],
+            [Oz, [0, 0, 0],1./8.,[ 0.0, 1.0, 0.0]],
+            [Oy, [0, 0, 1],1./8.,[ 0.0, 0.0, 1.0]],
+            [Oz, [0, 1, 0],1./8.,[ 0.0,-1.0, 0.0]],
+            # "upper" cell
+            [Oy, [1, 0, 0],1./8.,[ 0.0, 0.0,-1.0]],
+            [Oz, [1, 0, 0],1./8.,[ 0.0, 1.0, 0.0]],
+            [Oy, [1, 0, 1],1./8.,[ 0.0, 0.0, 1.0]],
+            [Oz, [1, 1, 0],1./8.,[ 0.0,-1.0, 0.0]]
+        ]
 
-    y_axis_rot = to_degrees(np.mean([ox_rot, oz_rot]))
-  
-    # z axis rotation ---------------------------
-    # xy plane projection
+    AFDi_Y=[
+            # atom, hopping, weight, target vector
+            # lower cell
+            [Ox, [0, 0, 0],1./8.,[ 0.0, 0.0, 1.0]],
+            [Oz, [0, 0, 0],1./8.,[-1.0, 0.0, 0.0]],
+            [Ox, [1, 0, 0],1./8.,[ 0.0, 0.0,-1.0]],
+            [Oz, [0, 0, 1],1./8.,[ 1.0, 0.0, 0.0]],
+            # upper cell
+            [Ox, [0, 1, 0],1./8.,[ 0.0, 0.0, 1.0]],
+            [Oz, [0, 1, 0],1./8.,[-1.0, 0.0, 0.0]],
+            [Ox, [1, 1, 0],1./8.,[ 0.0, 0.0,-1.0]],
+            [Oz, [0, 1, 1],1./8.,[ 1.0, 0.0, 0.0]]
+        ]
 
-    xy_oy_old = normalize(oy_old[:-1])
-    xy_oy_new = normalize(oy_new[:-1])
-    oy_rot = np.arccos(np.dot(xy_oy_old, xy_oy_new))
+    AFDi_Z=[
+            # atom, hopping, weight, target vector
+            # "lower" cell
+            [Ox, [0, 0, 0],1./8.,[ 0.0,-1.0, 0.0]],
+            [Oy, [0, 0, 0],1./8.,[ 1.0, 0.0, 0.0]],
+            [Ox, [1, 0, 0],1./8.,[ 0.0, 1.0, 0.0]],
+            [Oy, [0, 1, 0],1./8.,[-1.0, 0.0, 0.0]],
+            # "upper" cell
+            [Ox, [0, 0, 1],1./8.,[ 0.0,-1.0, 0.0]],
+            [Oy, [0, 0, 1],1./8.,[ 1.0, 0.0, 0.0]],
+            [Ox, [1, 0, 1],1./8.,[ 0.0, 1.0, 0.0]],
+            [Oy, [0, 1, 1],1./8.,[-1.0, 0.0, 0.0]]
+        ]
 
-    xy_ox_old = normalize(ox_old[:-1])
-    xy_ox_new = normalize(ox_new[:-1])
-    ox_rot = np.arccos(np.dot(xy_ox_old, xy_ox_new))
+    if mode == "a":
 
-    z_axis_rot = to_degrees(np.mean([oy_rot, ox_rot]))
+        x_distortions = analyzer.measure(config.supercell, unit_cell, AFDa_X)
+        x_angles = np.arctan(x_distortions/BO_dist)*180/np.pi
 
-    return np.array([x_axis_rot, y_axis_rot, z_axis_rot])
+        y_distortions = analyzer.measure(config.supercell, unit_cell, AFDa_Y)
+        y_angles = np.arctan(y_distortions/BO_dist)*180/np.pi
+
+        z_distortions = analyzer.measure(config.supercell, unit_cell, AFDa_Z)
+        z_angles = np.arctan(z_distortions/BO_dist)*180/np.pi
+
+        return (x_angles, y_angles, z_angles)
+
+    else:
+
+        x_distortions = analyzer.measure(config.supercell, unit_cell, AFDi_X)
+        x_angles = np.arctan(x_distortions/BO_dist)*180/np.pi
+
+        y_distortions = analyzer.measure(config.supercell, unit_cell, AFDi_Y)
+        y_angles = np.arctan(y_distortions/BO_dist)*180/np.pi
+
+        z_distortions = analyzer.measure(config.supercell, unit_cell, AFDi_Z)
+        z_angles = np.arctan(z_distortions/BO_dist)*180/np.pi
+
+        return (x_angles, y_angles, z_angles)
+
+def perovskite_FE(config, labels):
+
+    #TODO DOCUMENTATION
+
+    if not isinstance(config, MCConfiguration):
+        raise ezSCUP.exceptions.InvalidMCConfiguration
+
+    if not isinstance(labels, list):
+        raise ezSCUP.exceptions.InvalidLabelList
+
+    if len(labels) != 5:
+        raise ezSCUP.exceptions.InvalidLabelList
+    
+    for l in labels:
+        if l not in config.elements:
+            raise ezSCUP.exceptions.InvalidLabel
+
+    A, B, Ox, Oy, Oz = labels
+
+    analyzer = ModeAnalyzer()
+    analyzer.load(config)    
+
+    unit_cell=[[1,0,0],[0,1,0],[0,0,1]]
+
+    ### DISTORTIONS ###
+
+    FE_X=[  # atom, hopping, weight, target vector
+            # "frame"
+            [A, [0, 0, 0], 1./15., [ 1.0, 0.0, 0.0]],
+            [A, [1, 0, 0], 1./15., [ 1.0, 0.0, 0.0]],
+            [A, [1, 1, 0], 1./15., [ 1.0, 0.0, 0.0]],
+            [A, [0, 1, 0], 1./15., [ 1.0, 0.0, 0.0]],
+            [A, [0, 0, 1], 1./15., [ 1.0, 0.0, 0.0]],
+            [A, [1, 0, 1], 1./15., [ 1.0, 0.0, 0.0]],
+            [A, [1, 1, 1], 1./15., [ 1.0, 0.0, 0.0]],
+            [A, [0, 1, 1], 1./15., [ 1.0, 0.0, 0.0]],
+            # "octahedra"
+            [B, [0, 0, 0], 1./15., [ 1.0, 0.0, 0.0]],
+            [Ox, [0, 0, 0], 1./15., [-1.0, 0.0, 0.0]], 
+            [Ox, [1, 0, 0], 1./15., [-1.0, 0.0, 0.0]],
+            [Oy, [0, 0, 0], 1./15., [-1.0, 0.0, 0.0]],
+            [Oy, [0, 1, 0], 1./15., [-1.0, 0.0, 0.0]],
+            [Oz, [0, 0, 0], 1./15., [-1.0, 0.0, 0.0]],
+            [Oz, [0, 0, 1], 1./15., [-1.0, 0.0, 0.0]]
+        ]
+
+    FE_Y=[  # atom, hopping, weight, target vector
+            # "frame"
+            [A, [0, 0, 0], 1./15., [ 0.0, 1.0, 0.0]],
+            [A, [1, 0, 0], 1./15., [ 0.0, 1.0, 0.0]],
+            [A, [1, 1, 0], 1./15., [ 0.0, 1.0, 0.0]],
+            [A, [0, 1, 0], 1./15., [ 0.0, 1.0, 0.0]],
+            [A, [0, 0, 1], 1./15., [ 0.0, 1.0, 0.0]],
+            [A, [1, 0, 1], 1./15., [ 0.0, 1.0, 0.0]],
+            [A, [1, 1, 1], 1./15., [ 0.0, 1.0, 0.0]],
+            [A, [0, 1, 1], 1./15., [ 0.0, 1.0, 0.0]],
+            # "octahedra"
+            [B, [0, 0, 0], 1./15., [ 0.0, 1.0, 0.0]],
+            [Ox, [0, 0, 0], 1./15., [ 0.0,-1.0, 0.0]], 
+            [Ox, [1, 0, 0], 1./15., [ 0.0,-1.0, 0.0]],
+            [Oy, [0, 0, 0], 1./15., [ 0.0,-1.0, 0.0]],
+            [Oy, [0, 1, 0], 1./15., [ 0.0,-1.0, 0.0]],
+            [Oz, [0, 0, 0], 1./15., [ 0.0,-1.0, 0.0]],
+            [Oz, [0, 0, 1], 1./15., [ 0.0,-1.0, 0.0]]
+        ]
+
+    FE_Z=[  # atom, hopping, weight, target vector
+            # "frame"
+            [A, [0, 0, 0], 1./15., [0.0, 0.0, 1.0]],
+            [A, [1, 0, 0], 1./15., [0.0, 0.0, 1.0]],
+            [A, [1, 1, 0], 1./15., [0.0, 0.0, 1.0]],
+            [A, [0, 1, 0], 1./15., [0.0, 0.0, 1.0]],
+            [A, [0, 0, 1], 1./15., [0.0, 0.0, 1.0]],
+            [A, [1, 0, 1], 1./15., [0.0, 0.0, 1.0]],
+            [A, [1, 1, 1], 1./15., [0.0, 0.0, 1.0]],
+            [A, [0, 1, 1], 1./15., [0.0, 0.0, 1.0]],
+            # "octahedra"
+            [B, [0, 0, 0], 1./15., [0.0, 0.0, 1.0]],
+            [Ox, [0, 0, 0], 1./15., [0.0, 0.0,-1.0]], 
+            [Ox, [1, 0, 0], 1./15., [0.0, 0.0,-1.0]],
+            [Oy, [0, 0, 0], 1./15., [0.0, 0.0,-1.0]],
+            [Oy, [0, 1, 0], 1./15., [0.0, 0.0,-1.0]],
+            [Oz, [0, 0, 0], 1./15., [0.0, 0.0,-1.0]],
+            [Oz, [0, 0, 1], 1./15., [0.0, 0.0,-1.0]]
+        ]
+
+    x_dist = analyzer.measure(config.supercell, unit_cell, FE_X)
+    y_dist = analyzer.measure(config.supercell, unit_cell, FE_Y)
+    z_dist = analyzer.measure(config.supercell, unit_cell, FE_Z)
+
+    return x_dist, y_dist, z_dist
+
+
+def perovskite_simple_rotation(config, labels):
+
+    #TODO DOCUMENTATION
+
+    if not isinstance(config, MCConfiguration):
+        raise ezSCUP.exceptions.InvalidMCConfiguration
+
+    if not isinstance(labels, list):
+        raise ezSCUP.exceptions.InvalidLabelList
+
+    if len(labels) != 5:
+        raise ezSCUP.exceptions.InvalidLabelList
+    
+    for l in labels:
+        if l not in config.elements:
+            raise ezSCUP.exceptions.InvalidLabel
+
+    B, Ox, Oy, Oz = labels[1:]
+
+    analyzer = ModeAnalyzer()
+    analyzer.load(config)    
+
+    unit_cell=[[1,0,0],[0,1,0],[0,0,1]]
+
+    cell_zero = config.cells[0,0,0]
+    BO_dist = np.linalg.norm(cell_zero.positions[B] - cell_zero.positions[Oz])
+
+    ### DISTORTIONS ###
+
+    rot_X=[
+            # atom, hopping, weight, target vector
+            [Oy, [0, 0, 0],1./4.,[ 0.0, 0.0,-1.0]],
+            [Oz, [0, 0, 0],1./4.,[ 0.0, 1.0, 0.0]],
+            [Oy, [0, 0, 1],1./4.,[ 0.0, 0.0, 1.0]],
+            [Oz, [0, 1, 0],1./4.,[ 0.0,-1.0, 0.0]]
+        ]
+
+    rot_Y=[
+            # atom, hopping, weight, target vector
+            [Ox, [0, 0, 0],1./4.,[ 0.0, 0.0, 1.0]],
+            [Oz, [0, 0, 0],1./4.,[-1.0, 0.0, 0.0]],
+            [Ox, [1, 0, 0],1./4.,[ 0.0, 0.0,-1.0]],
+            [Oz, [0, 0, 1],1./4.,[ 1.0, 0.0, 0.0]]
+        ]
+
+    rot_Z=[
+            # atom, hopping, weight, target vector
+            [Ox, [0, 0, 0],1./4.,[ 0.0,-1.0, 0.0]],
+            [Oy, [0, 0, 0],1./4.,[ 1.0, 0.0, 0.0]],
+            [Ox, [1, 0, 0],1./4.,[ 0.0, 1.0, 0.0]],
+            [Oy, [0, 1, 0],1./4.,[-1.0, 0.0, 0.0]]
+    ]
+
+    x_distortions = analyzer.measure(config.supercell, unit_cell, rot_X)
+    x_angles = np.arctan(x_distortions/BO_dist)*180/np.pi
+
+    y_distortions = analyzer.measure(config.supercell, unit_cell, rot_Y)
+    y_angles = np.arctan(y_distortions/BO_dist)*180/np.pi
+
+    z_distortions = analyzer.measure(config.supercell, unit_cell, rot_Z)
+    z_angles = np.arctan(z_distortions/BO_dist)*180/np.pi
+
+    return (x_angles, y_angles, z_angles)
+

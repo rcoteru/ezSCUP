@@ -13,12 +13,13 @@ import os, sys
 import time
 
 # third party imports
+from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
 
 # ezSCUP imports
 from ezSCUP.simulations import MCSimulation, MCConfiguration, MCSimulationParser
-from ezSCUP.analysis import ModeAnalyzer
+from ezSCUP.analysis import perovskite_AFD, perovskite_simple_rotation
 from ezSCUP.files import save_file
 import ezSCUP.settings as cfg
 
@@ -34,7 +35,7 @@ OVERWRITE = False                           # overwrite old output folder?
 SUPERCELL = [2,2,4]                         # shape of the supercell
 ELEMENTS = ["Sr", "Ti", "O"]                # elements in the lattice
 NATS = 5                                    # number of atoms per cell
-TEMPERATURES = np.linspace(10, 50, 4)       # temperatures to simulate
+TEMPERATURES = np.linspace(10, 50, 4)       # temperatures to simulate         
 
 cfg.MC_STEPS = 2000                         # MC total steps
 cfg.MC_EQUILIBRATION_STEPS = 500            # MC equilibration steps
@@ -45,6 +46,10 @@ cfg.FIXED_STRAIN_COMPONENTS = [False]*6     # fixed strain components (none)
 plot_AFDa =   True                          # plot AFDa distortion angles?
 plot_AFDi =   True                          # plot AFDi distortion angles?
 plot_strain = True                          # plot strains?
+plot_vectors = True                         # plot vector fields?
+# temperatures for which to plot rotation vector field
+VECTOR_TEMPS = [TEMPERATURES[0]] 
+
 show_plots =  True                          # show the created plots?
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -58,109 +63,13 @@ show_plots =  True                          # show the created plots?
 
 def read_AFD(temp, mode="a"):
 
-    """ Calculates the AFD distortion rotation for each temperature. """
-    
-    # Ox, Oy, Oz = O3, O2, O1
+    """ Calculates the average AFD rotation for each temperature. """
 
-    if mode == "a":
-        print("Reading files to obtain the AFDa distortion rotation...")
-    elif mode == "i":
-        print("Reading files to obtain the AFDi distortion rotation...")
-    else:
+    if mode != "a" and mode != "i":
         raise NotImplementedError
 
     # create a simulation parser
     sim = MCSimulationParser()
-
-    # create the mode analyzer, so as to
-    # project the dirstortions on the lattice
-    analyzer = ModeAnalyzer()
-
-    ### DISTORTIONS ###
-
-    AFDa_X=[
-            # atom, hopping, weight, target vector
-            # "lower" cell
-            ["O2",[0, 0, 0],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[0, 0, 0],1./8.,[ 0.0, 1.0, 0.0]],
-            ["O2",[0, 0, 1],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[0, 1, 0],1./8.,[ 0.0,-1.0, 0.0]],
-            # "upper" cell
-            ["O2",[1, 0, 0],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[1, 0, 0],1./8.,[ 0.0,-1.0, 0.0]],
-            ["O2",[1, 0, 1],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[1, 1, 0],1./8.,[ 0.0, 1.0, 0.0]]
-        ]
-
-    AFDa_Y=[
-            # atom, hopping, weight, target vector
-            # lower cell
-            ["O3",[0, 0, 0],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[0, 0, 0],1./8.,[-1.0, 0.0, 0.0]],
-            ["O3",[1, 0, 0],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[0, 0, 1],1./8.,[ 1.0, 0.0, 0.0]],
-            # upper cell
-            ["O3",[0, 1, 0],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[0, 1, 0],1./8.,[ 1.0, 0.0, 0.0]],
-            ["O3",[1, 1, 0],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[0, 1, 1],1./8.,[-1.0, 0.0, 0.0]]
-        ]
-
-    AFDa_Z=[
-            # atom, hopping, weight, target vector
-            # "lower" cell
-            ["O3",[0, 0, 0],1./8.,[ 0.0,-1.0, 0.0]],
-            ["O2",[0, 0, 0],1./8.,[ 1.0, 0.0, 0.0]],
-            ["O3",[1, 0, 0],1./8.,[ 0.0, 1.0, 0.0]],
-            ["O2",[0, 1, 0],1./8.,[-1.0, 0.0, 0.0]],
-            # "upper" cell
-            ["O3",[0, 0, 1],1./8.,[ 0.0, 1.0, 0.0]],
-            ["O2",[0, 0, 1],1./8.,[-1.0, 0.0, 0.0]],
-            ["O3",[1, 0, 1],1./8.,[ 0.0,-1.0, 0.0]],
-            ["O2",[0, 1, 1],1./8.,[ 1.0, 0.0, 0.0]]
-        ]
-
-    AFDi_X=[
-            # atom, hopping, weight, target vector
-            # "lower" cell
-            ["O2",[0, 0, 0],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[0, 0, 0],1./8.,[ 0.0, 1.0, 0.0]],
-            ["O2",[0, 0, 1],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[0, 1, 0],1./8.,[ 0.0,-1.0, 0.0]],
-            # "upper" cell
-            ["O2",[1, 0, 0],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[1, 0, 0],1./8.,[ 0.0, 1.0, 0.0]],
-            ["O2",[1, 0, 1],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[1, 1, 0],1./8.,[ 0.0,-1.0, 0.0]]
-        ]
-
-    AFDi_Y=[
-            # atom, hopping, weight, target vector
-            # lower cell
-            ["O3",[0, 0, 0],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[0, 0, 0],1./8.,[-1.0, 0.0, 0.0]],
-            ["O3",[1, 0, 0],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[0, 0, 1],1./8.,[ 1.0, 0.0, 0.0]],
-            # upper cell
-            ["O3",[0, 1, 0],1./8.,[ 0.0, 0.0, 1.0]],
-            ["O1",[0, 1, 0],1./8.,[-1.0, 0.0, 0.0]],
-            ["O3",[1, 1, 0],1./8.,[ 0.0, 0.0,-1.0]],
-            ["O1",[0, 1, 1],1./8.,[ 1.0, 0.0, 0.0]]
-        ]
-
-    AFDi_Z=[
-            # atom, hopping, weight, target vector
-            # "lower" cell
-            ["O3",[0, 0, 0],1./8.,[ 0.0,-1.0, 0.0]],
-            ["O2",[0, 0, 0],1./8.,[ 1.0, 0.0, 0.0]],
-            ["O3",[1, 0, 0],1./8.,[ 0.0, 1.0, 0.0]],
-            ["O2",[0, 1, 0],1./8.,[-1.0, 0.0, 0.0]],
-            # "upper" cell
-            ["O3",[0, 0, 1],1./8.,[ 0.0,-1.0, 0.0]],
-            ["O2",[0, 0, 1],1./8.,[ 1.0, 0.0, 0.0]],
-            ["O3",[1, 0, 1],1./8.,[ 0.0, 1.0, 0.0]],
-            ["O2",[0, 1, 1],1./8.,[-1.0, 0.0, 0.0]]
-        ]
 
     ###################
 
@@ -168,44 +77,20 @@ def read_AFD(temp, mode="a"):
     rotations_err = []
     for t in temp: # read all files
 
+        # Ox, Oy, Oz = O3, O2, O1
         config = sim.access(t)
-        analyzer.load(config)
+        labels = ["Sr", "Ti", "O3", "O2", "O1"]
 
-        cell_zero = config.cells[0,0,0]
+        x_angles, y_angles, z_angles = perovskite_AFD(config, labels, mode)
 
-        TiO_dist = np.linalg.norm(cell_zero.positions["Ti"] - cell_zero.positions["O3"])
+        x_axis_rot = np.mean(np.abs(x_angles))
+        x_axis_rot_err = np.std(np.abs(x_angles))
+ 
+        y_axis_rot = np.mean(np.abs(y_angles))
+        y_axis_rot_err = np.std(np.abs(y_angles))
 
-        unit_cell=[[1,0,0],[0,1,0],[0,0,1]]
-
-        # X axis rotation  
-        if mode == "a":
-            distortions = analyzer.measure(SUPERCELL, unit_cell, AFDa_X)
-        else:
-            distortions = analyzer.measure(SUPERCELL, unit_cell, AFDi_X)
-        angles = np.arctan(np.abs(distortions/TiO_dist))*180/np.pi
-
-        x_axis_rot = np.mean(angles)
-        x_axis_rot_err = np.std(angles)
-
-        # Y axis rotation   
-        if mode == "a":
-            distortions = analyzer.measure(SUPERCELL, unit_cell, AFDa_Y)
-        else:
-            distortions = analyzer.measure(SUPERCELL, unit_cell, AFDi_Y)
-        angles = np.arctan(np.abs(distortions/TiO_dist))*180/np.pi
-
-        y_axis_rot = np.mean(angles)
-        y_axis_rot_err = np.std(angles)
-
-        # Z axis rotation    
-        if mode == "a":
-            distortions = analyzer.measure(SUPERCELL, unit_cell, AFDa_Z)
-        else:
-            distortions = analyzer.measure(SUPERCELL, unit_cell, AFDi_Z)
-        angles = np.arctan(np.abs(distortions/TiO_dist))*180/np.pi
-
-        z_axis_rot = np.mean(angles)
-        z_axis_rot_err = np.std(angles)
+        z_axis_rot = np.mean(np.abs(z_angles))
+        z_axis_rot_err = np.std(np.abs(z_angles))
 
         rots = np.array([x_axis_rot, y_axis_rot, z_axis_rot])
         rots_err = np.array([x_axis_rot_err, y_axis_rot_err, z_axis_rot_err])
@@ -224,15 +109,15 @@ def read_AFD(temp, mode="a"):
 
     return np.array(rotations), np.array(rotations_err)
 
-def display_AFD(temps, mode="a"):
+def display_AFD(temp, mode="a"):
 
-    """ Function to generate the AFD distortion temperature graph. """
+    """ Generates the AFD distortion graph. """
 
     # calculating angles from output files
     if mode == "a":
-        angles, angles_err = read_AFD(temps, mode="a")
+        angles, angles_err = read_AFD(temp, mode="a")
     elif mode == "i":
-        angles, angles_err = read_AFD(temps, mode="i")
+        angles, angles_err = read_AFD(temp, mode="i")
     else:
         raise NotImplementedError
     
@@ -247,16 +132,16 @@ def display_AFD(temps, mode="a"):
 
     headers = ["temp", "xrot", "yrot", "zrot",
         "xrot_err", "yrot_err", "zrot_err"]
-    save_file("AFD" + mode + ".csv", headers, 
-        [temps, xrot, yrot, zrot, xrot_err, yrot_err, zrot_err])
+    save_file("csv/AFD" + mode + ".csv", headers, 
+        [temp, xrot, yrot, zrot, xrot_err, yrot_err, zrot_err])
 
     # plotting
     
-    plt.figure("AFD" + mode + ".png")
+    fig = plt.figure("AFD" + mode + ".png")
 
-    plt.errorbar(temps, xrot, yerr=xrot_err, label=r"AFD$_{x}^{" + mode + "}$", marker ="<") 
-    plt.errorbar(temps, yrot, yerr=yrot_err, label=r"AFD$_{y}^{" + mode + "}$", marker =">") 
-    plt.errorbar(temps, zrot, yerr=zrot_err, label=r"AFD$_{z}^{" + mode + "}$", marker ="^")
+    plt.errorbar(temp, xrot, yerr=xrot_err, label=r"AFD$_{x}^{" + mode + "}$", marker ="<") 
+    plt.errorbar(temp, yrot, yerr=yrot_err, label=r"AFD$_{y}^{" + mode + "}$", marker =">") 
+    plt.errorbar(temp, zrot, yerr=zrot_err, label=r"AFD$_{z}^{" + mode + "}$", marker ="^")
     
     plt.tight_layout(pad = 3)
 
@@ -268,8 +153,63 @@ def display_AFD(temps, mode="a"):
     plt.legend(frameon = True, fontsize = 14)
     plt.grid(True)
 
-    plt.savefig("AFD" + mode + ".png")
+    plt.savefig("plots/AFD" + mode + ".png")
     plt.draw()
+
+#####################################################################
+#              FUNCTIONS TO OBTAIN ROTATION FIELD                   #
+#####################################################################
+
+
+def display_rotation_field(temps):
+
+    """ Generates the rotation vector field graph. """
+    
+    sim = MCSimulationParser()
+
+    for i, t in enumerate(temps):
+
+        # Ox, Oy, Oz = O3, O2, O1
+        config = sim.access(t)
+        labels = ["Sr", "Ti", "O3", "O2", "O1"]
+        
+        u, v ,w = perovskite_simple_rotation(config, labels)
+        modules = np.sqrt(np.multiply(u,u) + np.multiply(v,v), np.multiply(w,w))
+        nu = np.divide(u, modules)
+        nv = np.divide(v, modules)
+        nw = np.divide(w, modules)
+
+        x, y, z = np.meshgrid(
+            np.linspace(0,int(SUPERCELL[0])-1, SUPERCELL[0]),
+            np.linspace(0,int(SUPERCELL[1])-1, SUPERCELL[1]),
+            np.linspace(0,int(SUPERCELL[2])-1, SUPERCELL[2]),
+        )
+    
+        fig = plt.figure("vector" + str(i) + ".png", figsize=[8,8])
+        ax = fig.gca(projection='3d')
+        
+        ax.quiver(x, y, z, nu, nv, nw, length=1/np.max(SUPERCELL), lw=3)
+
+        ax.set_xlabel("x", fontsize=14)
+        ax.set_ylabel("y", fontsize=14)
+        ax.set_zlabel("z", fontsize=14)
+
+        ax.w_xaxis.set_pane_color((1,1,1,0))
+        ax.w_yaxis.set_pane_color((1,1,1,0))
+        ax.w_zaxis.set_pane_color((1,1,1,0))
+
+        ax.w_xaxis.line.set_color((1,1,1,0))
+        ax.w_yaxis.line.set_color((1,1,1,0))
+        ax.w_zaxis.line.set_color((1,1,1,0))
+
+        ax.set_xticks(np.linspace(0,int(SUPERCELL[0])-1, SUPERCELL[0]))
+        ax.set_yticks(np.linspace(0,int(SUPERCELL[1])-1, SUPERCELL[1]))
+        ax.set_zticks(np.linspace(0,int(SUPERCELL[2])-1, SUPERCELL[2]))
+
+        plt.tight_layout(pad = 3)
+        plt.grid(False)
+        plt.savefig("plots/vector" + str(i) + ".png")
+        plt.draw()
 
 
 #####################################################################
@@ -277,6 +217,8 @@ def display_AFD(temps, mode="a"):
 #####################################################################
 
 def read_strain(temps):
+
+    """ Calculates the average strains for each temperature. """
 
     sim = MCSimulationParser()
     sim.index()
@@ -290,11 +232,11 @@ def read_strain(temps):
 
         sx = data["Strn_xx"].mean()
         sy = data["Strn_yy"].mean()
-        sz = data["Strn_yy"].mean()
+        sz = data["Strn_zz"].mean()
 
         sx_err = data["Strn_xx"].std()
         sy_err = data["Strn_yy"].std()
-        sz_err = data["Strn_yy"].std()
+        sz_err = data["Strn_zz"].std()
         
         # rotate to take the z strain as the maximum     
         stra = np.array([sx,sy,sz])
@@ -317,7 +259,7 @@ def read_strain(temps):
 
 def display_strain(temps):
 
-    """Generates the strain vs temperature graph."""
+    """Generates the strains graph."""
 
     strain, strain_err = read_strain(temps) # reading cell sizes from output files
 
@@ -334,7 +276,7 @@ def display_strain(temps):
 
     headers = ["temp", "sx", "sy", "sz",
         "sx_err", "sy_err", "sz_err"]
-    save_file("strain.csv", headers, 
+    save_file("csv/strain.csv", headers, 
         [temps, sx, sy, sz, sx_err, sy_err, sz_err,])
 
     # plotting 
@@ -352,7 +294,7 @@ def display_strain(temps):
     plt.legend(frameon = True, fontsize = 14)
     plt.grid(True)
     
-    plt.savefig("strain.png")
+    plt.savefig("plots/strain.png")
     plt.draw()
 
 
@@ -367,6 +309,16 @@ if __name__ == "__main__":
 
     # simulate and properly store output
     sim.launch("input.fdf", temp=TEMPERATURES)
+
+    try: #create the "plots" folder if needed
+        os.mkdir("plots")
+    except FileExistsError:
+        pass
+
+    try: # create the "csv" folder if needed
+        os.mkdir("csv")
+    except FileExistsError:
+        pass
 
     if plot_AFDa: # plot AFDa if needed
         print("\nGenerating AFDa plot...")
@@ -386,6 +338,13 @@ if __name__ == "__main__":
         print("\nGenerating strain plot...")
         start = time.time()
         display_strain(TEMPERATURES)
+        end = time.time()
+        print("\n DONE! Time elapsed: {:.3f}s".format(end-start))
+
+    if plot_vectors: # plot vector field if needed
+        print("\nGenerating strain plot...")
+        start = time.time()
+        display_rotation_field(VECTOR_TEMPS)
         end = time.time()
         print("\n DONE! Time elapsed: {:.3f}s".format(end-start))
    
