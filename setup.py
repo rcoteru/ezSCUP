@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(name='ezSCUP',
       version='0.1.1',
-      description='Handles ScaleUP MC simulations with ease.',
+      description='SCALE-UP Python Wrapper',
       long_description=long_description,
       url='https://github.com/rcote98/ezSCUP',
       author='Raúl Coterillo',
