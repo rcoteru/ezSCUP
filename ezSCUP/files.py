@@ -29,11 +29,8 @@ def save_file(fname, headers, columns, sep=","):
         ----------
 
         - fname  (string): name of the output file
-
         - headers (list): list of column headers
-
         - columns (list): list of arrays to save
-
         - sep (string): separator between values
 
     """

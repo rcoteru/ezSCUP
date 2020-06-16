@@ -51,7 +51,7 @@ class MCSimulation:
     # BASIC USAGE # 
     
     Creates an output folder in the current directory.
-    All the simulation data is for each configuration is 
+    All the simulation data for each configuration is 
     conveniently stored in subfolders within it:
         
         output / [scale-up system_name].c[n]
@@ -63,7 +63,7 @@ class MCSimulation:
         n = [temp][stress][strain][field]
     
     for example, in a simulation with temp=[20,40,60,80] all confs
-    simulated at 40K will be stored in folders
+    simulated at 40K will be stored in folders named
 
         output / [scale-up system_name].c01******
 
@@ -105,21 +105,23 @@ class MCSimulation:
                 [1e9, 0., 0.]
             ]   # 1e9 V/m = 1V/nm in the x direction  
     
+    Attributes:
+    ----------
+
+     - fdf (string): base fdf file name
+     - name (string): default fdf's system_name
+
+     - temp (array): temperature vectors (K) 
+     - stress (array): stress vectors (Gpa)
+     - strain (array): strain vectors (% change) 
+     - field (array): electric field vectors (V/m)
+
+     - OVERWRITE (boolean): whether to overwrite latest output
+        DEFAULT: False.
+
     """
-
-    ########################
-    #      ATTRIBUTES      #
-    ########################
-
-    fdf = ""            # base fdf file
-    name = ""           # default fdf's system_name
-
-    temp = []           # temperature vectors (K) 
-    stress = []         # stress vectors (Gpa)
-    strain = []         # strain vectors (% change) 
-    field = []          # electric field vectors (V/m)
-
-    OVERWRITE = False   # whether to overwrite latest output
+    
+    #######################################################
 
     def __init__(self, supercell, elements, nats, OVERWRITE=False):
 
@@ -133,15 +135,13 @@ class MCSimulation:
         ----------
 
         - supercell  (3x1 array): supercell size
-
         - elements (list): element labels, 
             ie: SrTiO3 -> elements = ["Sr", "Ti", "O"]
-
         - nats (int): number of atoms inside a unit cell, 
             ie: SrTi03 -> nats = 5
-
         - OVERWRITE (boolean): whether or not overwrite
             existing output folder, defaults to False.
+            
         """
 
         self.supercell = supercell
@@ -157,8 +157,8 @@ class MCSimulation:
 
         """
         
-        Start a simulation run with all the possible combinations of
-        the given parameters. 
+        Start a simulation run with all the possible combinations 
+        of the given parameters. 
 
         For more information on variable definition, 
         see the class docstring.
@@ -169,11 +169,8 @@ class MCSimulation:
         - fdf  (string): common fdf base file for all simulations.
 
         - temp (list): list of temperatures, required.
-
         - stress (list): list of stress vectors, if needed.
-
         - strain (list): list of strain vectors, if needed.
-
         - field (list): list of field vectors, if needed.
 
         """
@@ -225,7 +222,6 @@ class MCSimulation:
 
         # get the current path
         current_path = os.getcwd()
-
 
         # create output directory
         try:
@@ -416,8 +412,12 @@ class MCConfiguration:
 
     """
 
-    Parses all the data from a previously simulated configuration, 
-    providing easy access to all its output. 
+    WARNING: This class is NOT meant to be manually 
+    created, its only purpose is to be returned by 
+    the MCConfigurationParser class.
+
+    Parses all the data from a previously simulated 
+    configuration, providing easy access to all its output. 
     
     # BASIC USAGE # 
     
@@ -437,32 +437,60 @@ class MCConfiguration:
 
     # ACCESSING CELL DATA #
 
-    # TODO copy from the parser classes
+    In order to access cell data after loading the cell data in the class,
+    for example after acessing via the MCConfigurationParser class, just do:
 
-    """
+        sim = MCConfigurationParser()           # instantiate the parser class
+        config = sim.access(t, s=s, [...])      # access the configuration (this class)
+        cell = config.cells[x,y,z]              # access the desired cell
+        cell.positions["element_label"]         # position data by label
+        cell.displacements["element_label"]     # displacement data by label
+
+    where x, y and z is the position of the desired cell in the supercell.
+    This will return a "Cell" class with an attribute "displacements", 
+    a dictionary with the displacement vector (average of partial .restarts)
+    for each element label, and another "positions" dictionary, with the 
+    position vectors (from REF file) for each label. (more within the next 
+    section)
+
+    # ELEMENT LABELING #
+
+    By default, SCALE-UP does not label elements in the output beside a 
+    non-descript number. This programs assigns a label to every atom in
+    order to easily access their data from dictionaries.
+
+    Suppose you have an SrTiO3 cell, only three elements but five atoms.
+    Then the corresponding labels would be ["Sr","Ti","O1","O2","O3"].
+
+    Attributes:
+    ----------
+
+     - name (string): file base name
+     - folder_name (string): configuration folder (name)
+     - folder_path (string): configuration folder (full path)
+     - current_directory (sring): main script directory
+     - partials (list): partial files in the folder (full path)
+
+     - nmeas (int): number of measurements above the threshold
+     - total_steps (int): number of MC steps taken
+     - step_threshold: only pick partials with higher step 
+        than this. DEFAULT: cfg.MC_EQUILIBRATION_STEPS
+     
+     - supercell (array): supercell shape
+     - lat_constants (array): lattice constants, in Bohr (a, b, c)
+     - lat_angles (array): lattice angles, in degress (alfa, beta, gamma)
+     - elements (list): list of element labels within the cells
+     - nats (int): number of atoms within the cells
+
+     - refp (REFPaser): .restart file parser (ezSCUP.parsers)
+     - resp (RestartParser): .REF file parser (ezSCUP.parsers)
+     - outp (OutParser): output file parser (ezSCUP.parsers)
+
+    """ 
 
     ########################
     #      ATTRIBUTES      #
     ########################
-
-    name = ""               # file base name
-    folder_name = ""        # configuration folder name
-    folder_path = ""        # configuration folder path
-    current_directory = ""  # main script directory
-    partials = []           # partial files in the folder (full path)
-
-    nmeas = 0               # number of measurements
-    total_steps = 0         # number of MC steps
-    # only pick partials with higher step than this
-    step_threshold = cfg.MC_EQUILIBRATION_STEPS
-
-    supercell = []          # supercell shape
-    lat_constants = []      # lattice constants, in Bohr
-    elements = []           # elements in the lattice
-    nats = 0                # number of atoms per cell
-    
-    strains = []            # average relative strains 
-    cells = []              # average cell data    
 
     refp = REFParser()      # .restart file parser
     resp = RestartParser()  # .REF file parser
@@ -521,6 +549,7 @@ class MCConfiguration:
         # loads cells with only their original location
         self.refp.load(os.path.join(folder, base_sim_name + "_FINAL.REF"))
         self.supercell = self.refp.supercell
+        self.lat_constants = self.refp.lat_constants
         self.elements = self.refp.elements
         self.cells = self.refp.cells
         self.nats = self.refp.nats
@@ -558,6 +587,71 @@ class MCConfiguration:
                         for atom in self.cells[x,y,z].displacements: 
                             self.cells[x,y,z].displacements[atom] = self.cells[x,y,z].displacements[atom]/self.nmeas
         
+    def load_unique(self, base_sim_name):
+
+        """
+        
+        Load the given configuration folder's data.
+
+        Parameters:
+        ----------
+
+        - folder_name  (string): configuration folder name,
+            usually [ScaleUP system_name].c[configuration number]
+
+        - base_sim_name (list): basename of the ScaleUP files,
+            usually [ScaleUP system_name].T[temperature in integer format]
+
+        """
+
+        self.current_directory = os.getcwd()
+        self.name = base_sim_name
+
+        self.outp = OutParser()
+
+        # loads basic filename information
+        self.name = base_sim_name
+        self.folder_name = None
+        self.current_directory = os.getcwd()
+        self.folder_path = self.current_directory
+
+        # no partials loaded
+        self.partials = []
+        self.nmeas = 0
+        self.total_steps = None
+        self.step_threshold = cfg.MC_EQUILIBRATION_STEPS 
+        
+
+        # loads cells with only their original location
+        self.refp.load(os.path.join(self.name + "_FINAL.REF"))
+        self.supercell = self.refp.supercell
+        self.elements = self.refp.elements
+        self.cells = self.refp.cells
+        self.nats = self.refp.nats
+
+        ####### obtain average strains and displacements #######
+
+        # first, initialize the attributes for strain and displacements
+        self.strains = np.zeros(6)
+        for x in range(self.supercell[0]):
+            for y in range(self.supercell[1]):
+                for z in range(self.supercell[2]):
+
+                    self.cells[x,y,z].displacements = {}
+                    for atom in self.cells[x,y,z].positions:
+                        self.cells[x,y,z].displacements[atom] = np.zeros(3)
+
+        # add strains and displacements
+        self.resp.load(self.name + "_FINAL.restart") # load the partial
+        self.strains = self.resp.strains # add the strains
+
+        for x in range(self.supercell[0]):
+            for y in range(self.supercell[1]):
+                for z in range(self.supercell[2]):
+                    for atom in self.cells[x,y,z].displacements: 
+                        self.cells[x,y,z].displacements[atom] = self.resp.cells[x,y,z].displacements[atom]
+
+        pass
 
     #######################################################
 
@@ -580,7 +674,7 @@ class MCConfiguration:
         ldata = self.outp.lattice_data.copy(deep=True)
         ldata = ldata[ldata.index >= self.step_threshold]
 
-        return self.outp.lattice_data
+        return ldata
 
     #######################################################
 
@@ -633,18 +727,23 @@ class MCSimulationParser:
     All the output file information is accessed through the output_file()
     method, which returns a pandas Dataframe with the lattice ("LT:") data.
 
+    Attributes:
+    ----------
+
+     - name (string): simualtion file base name
+
+     - temp (array): temperature vectors (K) 
+     - stress (array): stress vectors (Gpa)
+     - strain (array): strain vectors (% change) 
+     - field (array): electric field vectors (V/m)
+
+     - parser (MCConfiguration): last configuration accessed
+
     """
 
     ########################
     #      ATTRIBUTES      #
     ########################
-
-    name = ""           # file base name
-
-    temp = []           # temperature vectors (K) 
-    stress = []         # stress vectors (Gpa)
-    strain = []         # strain vectors (% change) 
-    field = []          # electric field vectors (V/m)
 
     parser = MCConfiguration()
 

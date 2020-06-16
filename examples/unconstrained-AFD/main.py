@@ -42,6 +42,7 @@ cfg.MC_EQUILIBRATION_STEPS = 500            # MC equilibration steps
 cfg.MC_STEP_INTERVAL = 50                   # MC steps between partial files
 cfg.LATTICE_OUTPUT_INTERVAL = 50            # MC steps between output prints  
 cfg.FIXED_STRAIN_COMPONENTS = [False]*6     # fixed strain components (none)
+cfg.MC_MAX_JUMP = 0.1                       # MC max jump (in Ang, def=0.5)
 
 plot_AFDa =   True                          # plot AFDa distortion angles?
 plot_AFDi =   True                          # plot AFDi distortion angles?

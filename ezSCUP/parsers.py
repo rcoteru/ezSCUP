@@ -73,21 +73,21 @@ class RestartParser:
     Suppose you have an SrTiO3 cell, only three elements but five atoms.
     Then the corresponding labels would be ["Sr","Ti","O1","O2","O3"].
 
+    Attributes:
+    ----------
+
+     - fname (string): loaded file name
+     - supercell (array): supercell shape
+     - ncells (int): number of cells
+     - nats (int): number of atoms per cell
+     - nels (int): number of distinct atomic elements
+     - elements (list): list of element labels within the cells
+     
+     - strains (array): strains, in Voigt notation (percent variation)
+     - cells (array): loaded cell data (displacements)
+
     """
     
-    ########################
-    #      ATTRIBUTES      #
-    ########################
-
-    fname = ""          # loaded file name
-    supercell = []      # supercell shape
-    ncells = 0          # number of cells
-    nats = 0            # number of atoms per cell
-    nels = 0            # number of distinct atomic elements
-    elements = []       # elements in the lattice, in ezSCUP notation
-    strains = []        # strains, in Voigt notation (percent variation)
-    cells = {}          # loaded cell data
-
     #######################################################
 
     def load(self, fname):
@@ -216,20 +216,20 @@ class REFParser:
     Suppose you have an SrTiO3 cell, only three elements but five atoms.
     Then the corresponding labels would be ["Sr","Ti","O1","O2","O3"].
 
+    Attributes:
+    ----------
+
+     - fname (string): loaded file name
+     - supercell (array): supercell shape
+     - ncells (int): number of cells
+     - nats (int): number of atoms per cell
+     - nels (int): number of distinct atomic elements
+     - elements (list): list of element labels within the cells
+     
+     - lat_constants (array): lattice constants, in Voigt notation (Bohrs)
+     - cells (array): loaded cell data (reference positions)
+
     """
-
-    ########################
-    #      ATTRIBUTES      #
-    ########################
-
-    fname = ""          # loaded file name
-    supercell = []      # supercell shape
-    ncells = 0          # number of cells
-    nats = 0            # number of atoms per cell
-    nels = 0            # number of distinct atomic elements
-    elements = []       # elements in the lattice, in order
-    lat_constants = []  # lattice constants, in Bohrs
-    cells = [[[]]]      # loaded cell data
 
     #######################################################
 
@@ -334,19 +334,23 @@ class OutParser:
     All printed lattice data is accessible via attributes.
     Parsed data is stored as pandas Dataframes. 
 
+    Attributes:
+    ----------
+
+     - fname (string): loaded file name
+     - lattice_data (Dataframe): loaded lattice data
+     - lt_re (string): search string for lattice data
+        DEFAULT: ezSCUP.settings.LT_SEARCH_WORD
+
     """
-     
-    ########################
-    #      ATTRIBUTES      #
-    ########################
-
-    fname = ""              # loaded file name
-    lattice_data = ""       # lattice data 
-
-    # re expression for lattice data
-    lt_re = cfg.LT_SEARCH_WORD 
 
     #######################################################
+
+    def __init__(self):
+
+        """ OutParser class constructor. """
+
+        self.lt_re = cfg.LT_SEARCH_WORD 
 
     def load(self, fname):
 
