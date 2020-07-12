@@ -1,4 +1,10 @@
-"""Example script"""
+"""
+
+Executes STO simulations for three different epitaxial strain restrictions,
+temperatures spanning between 20 K and 300 K, in 8x8x8 supercells.
+
+
+"""
 
 __author__ = "Raúl Coterillo"
 __email__  = "raulcote98@gmail.com"
@@ -18,7 +24,7 @@ import numpy as np
 
 # ezSCUP imports
 from ezSCUP.simulations import MCSimulation, MCConfiguration, MCSimulationParser
-from ezSCUP.analysis import perovskite_AFD, perovskite_FE
+from ezSCUP.analysis import perovskite_AFD, perovskite_FE_full, perovskite_FE_simple, BornPolarization
 from ezSCUP.files import save_file
 import ezSCUP.settings as cfg
 
@@ -29,30 +35,48 @@ import ezSCUP.settings as cfg
 # IMPORTANT: location of the Scale-Up executable in the system
 cfg.SCUP_EXEC = "/home/raul/Software/scale-up/build_dir/src/scaleup.x"
 
-OVERWRITE = False                          # overwrite old output folder?
+OVERWRITE = False                           # overwrite old output folder?
 
-SUPERCELL = [4,4,3]                         # shape of the supercell
+# ~~~~~~~~~~~~~~~~~~~~~ SIMULATION SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+SUPERCELL = [8,8,8]                         # shape of the supercell
 ELEMENTS = ["Sr", "Ti", "O"]                # elements in the lattice
 NATS = 5                                    # number of atoms per cell
-TEMPERATURES = np.linspace(20, 100, 5)      # temperatures to simulate
-STRAINS = [                                 # strains to simulate
-    [+0.03, +0.03, 0., 0., 0., 0.],
-    [+0.00, +0.00, 0., 0., 0., 0.],
-    [-0.03, -0.03, 0., 0., 0., 0.]
-]   # +-2% and 0% cell strain in the x and y direction
 
-cfg.MC_STEPS = 3000                         # MC total steps
-cfg.MC_EQUILIBRATION_STEPS = 1000           # MC equilibration steps
+TEMPERATURES = np.linspace(20, 300, 10)     # temperatures to simulate
+STRAINS = [                                 # strains to simulate
+    [+0.03, +0.03, 0.0, 0.0, 0.0, 0.0],
+    [+0.00, +0.00, 0.0, 0.0, 0.0, 0.0],
+    [-0.03, -0.03, 0.0, 0.0, 0.0, 0.0]
+]   # +-3% and 0% cell strain in the x and y direction (Voigt notation)
+
+cfg.MC_STEPS = 40000                        # MC total steps
+cfg.MC_EQUILIBRATION_STEPS = 5000           # MC equilibration steps
 cfg.MC_STEP_INTERVAL = 50                   # MC steps between partial files
 cfg.LATTICE_OUTPUT_INTERVAL = 10            # MC steps between output prints  
 # fixed strain components: xx, yy, xy (Voigt notation)
 cfg.FIXED_STRAIN_COMPONENTS = [True, True, False, False, False, True]
 
-plot_AFDa =   True                          # plot AFDa distortion angles?
-plot_AFDi =   True                          # plot AFDi distortion angles?
-plot_strain = True                          # plot strains?
-plot_polarization = True                    # plot polarization?
-show_plots =  True                          # show the created plots?
+cfg.PRINT_CONF_SETTINGS = True              # (DEBUGGING) print individual FDF settings
+
+# ~~~~~~~~~~~~~~~~~~~~~~ ANALYSIS SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+plot_AFDa = True                          # plot AFDa angles?
+plot_AFDi = True                          # plot AFDi angles?
+FIX_XY_PLANE = True                       # make x rotation always the big one?
+plot_strain = True                        # plot strains?
+
+plot_full_FE = True                       # plot B-site full FE?
+plot_domain_full_FE = True                # plot domain B-site full FE?
+plot_simple_FE_B = True                   # plot B-site simple FE? 
+plot_simple_FE_A = True                   # plot A-site simple FE?
+
+plot_polarization = True                  # plot polarization?
+plot_domain_polarization = True           # plot polarization with domains?
+
+show_plots =  True                        # show the created plots?
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~ code starts here ~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -63,7 +87,7 @@ show_plots =  True                          # show the created plots?
 #              FUNCTIONS TO OBTAIN THE AFD ROTATIONS                #
 #####################################################################
 
-def read_AFD(temp, s, mode="a"):
+def read_AFD(temp, s, mode="a", threshold=0.):
 
     """ Calculates the average AFD rotations for each temperature. """
    
@@ -84,15 +108,36 @@ def read_AFD(temp, s, mode="a"):
         labels = ["Sr", "Ti", "O3", "O2", "O1"]
 
         x_angles, y_angles, z_angles = perovskite_AFD(config, labels, mode)
+        
+        x_angles = x_angles.flatten()
+        x_angles = np.array([rot for rot in x_angles if np.abs(rot) > threshold])
 
-        x_axis_rot = np.mean(np.abs(x_angles))
-        x_axis_rot_err = np.std(np.abs(x_angles))
- 
-        y_axis_rot = np.mean(np.abs(y_angles))
-        y_axis_rot_err = np.std(np.abs(y_angles))
+        y_angles = y_angles.flatten()
+        y_angles = np.array([rot for rot in y_angles if np.abs(rot) > threshold])
 
-        z_axis_rot = np.mean(np.abs(z_angles))
-        z_axis_rot_err = np.std(np.abs(z_angles))
+        z_angles = z_angles.flatten()
+        z_angles = np.array([rot for rot in z_angles if np.abs(rot) > threshold])
+
+        if x_angles.size == 0:
+            x_axis_rot = 0
+            x_axis_rot_err = 0
+        else:
+            x_axis_rot = np.mean(np.abs(x_angles))
+            x_axis_rot_err = np.std(np.abs(x_angles))
+
+        if y_angles.size == 0:
+            y_axis_rot = 0
+            y_axis_rot_err = 0
+        else:
+            y_axis_rot = np.mean(np.abs(y_angles))
+            y_axis_rot_err = np.std(np.abs(y_angles))
+
+        if z_angles.size == 0:
+            z_axis_rot = 0
+            z_axis_rot_err = 0
+        else:
+            z_axis_rot = np.mean(np.abs(z_angles))
+            z_axis_rot_err = np.std(np.abs(z_angles))
 
         rots = np.array([x_axis_rot, y_axis_rot, z_axis_rot])
         rots_err = np.array([x_axis_rot_err, y_axis_rot_err, z_axis_rot_err])
@@ -103,7 +148,7 @@ def read_AFD(temp, s, mode="a"):
     return np.array(rotations), np.array(rotations_err)
 
 
-def display_AFD(temp, strain, mode="a"):
+def display_AFD(temp, strain, mode="a", threshold=0.):
 
     """ Function to generate the AFD distortion temperature graph. """
 
@@ -114,10 +159,10 @@ def display_AFD(temp, strain, mode="a"):
     data = {}
     for s in strain:
         if mode == "a":
-            angles, angles_err = read_AFD(temp, s, mode="a")
+            angles, angles_err = read_AFD(temp, s, mode="a", threshold=threshold)
             data[str(s)] = (angles, angles_err)
         else:
-            angles, angles_err = read_AFD(temp, s, mode="i")
+            angles, angles_err = read_AFD(temp, s, mode="i", threshold=threshold)
             data[str(s)] = (angles, angles_err)
 
     # plotting
@@ -141,6 +186,23 @@ def display_AFD(temp, strain, mode="a"):
         save_file("csv/AFD" + mode  + str(i) + ".csv", headers, 
             [temp, xrot, yrot, zrot, xrot_err, yrot_err, zrot_err])
 
+        # rotate so that the largest xy plane rotations always point in the x dir (aesthetics)
+        if FIX_XY_PLANE:
+            for k in range(len(xrot)):
+
+                if xrot[k] > yrot[k]:
+                    pass
+
+                else:
+                    c = xrot[k]
+                    c_err = xrot_err[k]
+
+                    xrot[k] = yrot[k]
+                    xrot_err[k] = yrot_err[k]
+
+                    yrot[k] = c
+                    yrot_err[k] = c_err
+
         plt.errorbar(temp, xrot, yerr=xrot_err, c=colors[i], marker ="<")
         plt.errorbar(temp, yrot, yerr=yrot_err, c=colors[i], marker =">")
         plt.errorbar(temp, zrot, yerr=zrot_err, c=colors[i], marker ="^", label="$S_{xy}="+str(s[0])+"$")
@@ -162,9 +224,12 @@ def display_AFD(temp, strain, mode="a"):
 #        FUNCTIONS TO OBTAIN THE FERROELECTRIC DISTORTIONS          #
 #####################################################################
 
-def read_FE(temp, s):
+def read_simple_FE(temp, s, mode="B"):
 
-    """ Calculates the FE average distortions for each temperature. """
+    """ Calculates the simple FE distortions for each temperature. """
+
+    if mode != "B" and mode != "A":
+        raise NotImplementedError
     
     # create a simulation parser
     sim = MCSimulationParser()
@@ -179,7 +244,7 @@ def read_FE(temp, s):
         config = sim.access(t, s=s)
         labels = ["Sr", "Ti", "O3", "O2", "O1"]
 
-        x_dist, y_dist, z_dist = perovskite_FE(config, labels)
+        x_dist, y_dist, z_dist = perovskite_FE_simple(config, labels, mode)
 
         # X axis distortion  
         x_axis_dist = np.mean(x_dist)
@@ -201,19 +266,26 @@ def read_FE(temp, s):
 
     return np.array(distortions), np.array(distortions_err)
 
-def display_FE(temp, strain):
+def display_simple_FE(temp, strain, mode="B"):
 
-    """ Function to generate the FE distortion temperature graph. """
+    """ Function to generate the simple FE distortion temperature graph. """
 
-    # calculating angles from output files
+    if mode != "B" and mode != "A":
+        raise NotImplementedError
+
+    # calculating distortions from output files
     data = {}
     for s in strain:
-        dists, dists_err = read_FE(temp, s)
-        data[str(s)] = (dists, dists_err)
+        if mode == "B":
+            dists, dists_err = read_simple_FE(temp, s, mode="B")
+            data[str(s)] = (dists, dists_err)
+        else:
+            dists, dists_err = read_simple_FE(temp, s, mode="A")
+            data[str(s)] = (dists, dists_err)
 
     # plotting
     colors = ["black", "blue", "red", "green", "yellow"]
-    plt.figure("FE.png")
+    plt.figure("simpleFE_"+ mode +".png")
     for i, s in enumerate(strain):
 
         dists, dists_err = data[str(s)]
@@ -227,9 +299,9 @@ def display_FE(temp, strain):
         ydist_err = dists_err[:,1]
         zdist_err = dists_err[:,2]
 
-        headers = ["temp", "xdist", "ydist", "zdisr",
+        headers = ["temp", "xdist", "ydist", "zdist",
         "xdist_err", "ydist_err", "zdist_err"]
-        save_file("csv/FE" + str(i) + ".csv", headers, 
+        save_file("csv/simpleFE_" + mode + str(i) + ".csv", headers, 
             [temp, xdist, ydist, zdist, xdist_err, ydist_err, zdist_err])
 
         plt.errorbar(temp, np.abs(xdist), yerr=xdist_err, c=colors[i], marker ="<")
@@ -246,7 +318,120 @@ def display_FE(temp, strain):
     plt.legend(frameon = True, fontsize = 14)
     plt.grid(True)
 
-    plt.savefig("plots/FE.png")
+    plt.savefig("plots/simpleFE_"+ mode +".png")
+    plt.draw()
+
+
+def read_full_FE(temp, s, module=False):
+
+    """ Calculates the FE average distortions for each temperature. """
+    
+    # create a simulation parser
+    sim = MCSimulationParser()
+
+    ###################
+
+    distortions = []
+    distortions_err = []
+    for t in temp: # read all files
+
+        # Ox, Oy, Oz = O3, O2, O1
+        config = sim.access(t, s=s)
+        labels = ["Sr", "Ti", "O3", "O2", "O1"]
+
+        x_dist, y_dist, z_dist = perovskite_FE_full(config, labels)
+
+        if module:
+            # X axis distortion  
+            x_axis_dist = np.mean(np.abs(x_dist))
+            x_axis_dist_err = np.std(np.abs(x_dist))
+
+            # Y axis distortion
+            y_axis_dist = np.mean(np.abs(y_dist))
+            y_axis_dist_err = np.std(np.abs(y_dist))
+
+            # Z axis distortion
+            z_axis_dist = np.mean(np.abs(z_dist))
+            z_axis_dist_err = np.std(np.abs(z_dist))
+
+        else:
+            # X axis distortion  
+            x_axis_dist = np.mean(x_dist)
+            x_axis_dist_err = np.std(x_dist)
+
+            # Y axis distortion
+            y_axis_dist = np.mean(y_dist)
+            y_axis_dist_err = np.std(y_dist)
+
+            # Z axis distortion
+            z_axis_dist = np.mean(z_dist)
+            z_axis_dist_err = np.std(z_dist)
+
+        dists = np.array([x_axis_dist, y_axis_dist, z_axis_dist])
+        dists_err = np.array([x_axis_dist_err, y_axis_dist_err, z_axis_dist_err])
+
+        distortions.append(dists)
+        distortions_err.append(dists_err)
+
+    return np.array(distortions), np.array(distortions_err)
+
+def display_full_FE(temp, strain, module=False):
+
+    """ Function to generate the FE distortion temperature graph. """
+
+    # calculating angles from output files
+    data = {}
+    for s in strain:
+        if module:
+            dists, dists_err = read_full_FE(temp, s, module=True)
+            data[str(s)] = (dists, dists_err)
+        else:
+            dists, dists_err = read_full_FE(temp, s, module=False)
+            data[str(s)] = (dists, dists_err)
+
+    # plotting
+    colors = ["black", "blue", "red", "green", "yellow"]
+    plt.figure("fullFE.png")
+    for i, s in enumerate(strain):
+
+        dists, dists_err = data[str(s)]
+
+        # unpack the distortions
+        xdist = dists[:,0]
+        ydist = dists[:,1]
+        zdist = dists[:,2]
+
+        xdist_err = dists_err[:,0]
+        ydist_err = dists_err[:,1]
+        zdist_err = dists_err[:,2]
+
+        headers = ["temp", "xdist", "ydist", "zdisr",
+        "xdist_err", "ydist_err", "zdist_err"]
+
+        if module:
+            save_file("csv/abs_fullFE" + str(i) + ".csv", headers, 
+                [temp, xdist, ydist, zdist, xdist_err, ydist_err, zdist_err])
+        else:
+            save_file("csv/fullFE" + str(i) + ".csv", headers, 
+                [temp, xdist, ydist, zdist, xdist_err, ydist_err, zdist_err])
+
+        plt.errorbar(temp, np.abs(xdist), yerr=xdist_err, c=colors[i], marker ="<")
+        plt.errorbar(temp, np.abs(ydist), yerr=ydist_err, c=colors[i], marker =">")
+        plt.errorbar(temp, np.abs(zdist), yerr=zdist_err, c=colors[i], marker ="^", label="$S_{xy}="+str(s[0])+"$")
+    
+    plt.tight_layout(pad = 3)
+
+    plt.xlabel("T (K)", fontsize = 14)
+    plt.ylabel(r"amplitude (bohr)", fontsize = 14)
+
+    plt.legend(frameon = True, fontsize = 14)
+    plt.grid(True)
+
+    if module:
+        plt.savefig("plots/abs_fullFE.png")
+    else:
+        plt.savefig("plots/fullFE.png")
+
     plt.draw()
 
 
@@ -332,25 +517,47 @@ def display_strain(temp, strain):
 #             FUNCTIONS TO OBTAIN THE POLARIZATION                  #
 #####################################################################
 
-def read_polarization(temp, s):
+
+def read_polarization(temp, s, module=False):
 
     sim = MCSimulationParser()
+    born = BornPolarization()
     sim.index()
+
+    labels = ["Sr", "Ti", "O3", "O2", "O1"]
+    born_charges = {
+        "Sr": np.array([2.566657, 2.566657, 2.566657]),
+        "Ti": np.array([7.265894, 7.265894, 7.265894]),
+        "O3": np.array([-5.707345, -2.062603, -2.062603]),
+        "O2": np.array([-2.062603, -5.707345, -2.062603]),
+        "O1": np.array([-2.062603, -2.062603, -5.707345]),
+    }
 
     pols = []
     pols_err = []
     for t in temp: # read all files
 
-        sim.access(t, s=s)
-        data = sim.parser.lattice_output()
+        config = sim.access(t, s=s)
 
-        px = data["Av_Pl_x(C/m2)"].mean()
-        py = data["Av_Pl_y(C/m2)"].mean()
-        pz = data["Av_Pl_z(C/m2)"].mean()
+        born.load(config)
+        polx, poly, polz = born.perovs_unit_cell_polarization(born_charges)
 
-        px_err = data["Av_Pl_x(C/m2)"].std()
-        py_err = data["Av_Pl_y(C/m2)"].std()
-        pz_err = data["Av_Pl_z(C/m2)"].std()
+        if module:
+            px = np.mean(np.abs(polx))
+            py = np.mean(np.abs(poly))
+            pz = np.mean(np.abs(polz))
+
+            px_err = np.std(np.abs(polx))
+            py_err = np.std(np.abs(poly))
+            pz_err = np.std(np.abs(polz))
+        else:
+            px = np.mean(polx)
+            py = np.mean(poly)
+            pz = np.mean(polz)
+
+            px_err = np.std(polx)
+            py_err = np.std(poly)
+            pz_err = np.std(polz)
            
         pol = np.array([px,py,pz])
         pol_err = np.array([px_err,py_err,pz_err])
@@ -361,15 +568,19 @@ def read_polarization(temp, s):
     return np.array(pols), np.array(pols_err)
 
 
-def display_polarization(temp, strain):
+def display_polarization(temp, strain, module=False):
 
-    """Generates the strain vs temperature graph."""
+    """Generates the polarization vs temperature graph."""
 
     data = {}
     # reading polarization from output files
     for s in strain:
-        pol, pol_err = read_polarization(temp, s) 
-        data[str(s)] = (pol, pol_err)
+        if module:
+            pol, pol_err = read_polarization(temp, s, module=True) 
+            data[str(s)] = (pol, pol_err)
+        else:
+            pol, pol_err = read_polarization(temp, s, module=False) 
+            data[str(s)] = (pol, pol_err)
     
     # plotting 
     colors = ["black", "blue", "red", "green", "yellow"]
@@ -389,8 +600,13 @@ def display_polarization(temp, strain):
 
         headers = ["temp", "px", "py", "pz",
         "px_err", "py_err", "pz_err"]
-        save_file("csv/polarization" + str(i) + ".csv", headers, 
-            [temp, px, py, pz, px_err, py_err, pz_err,])
+
+        if module:
+            save_file("csv/abs_polarization" + str(i) + ".csv", headers, 
+                [temp, px, py, pz, px_err, py_err, pz_err,])
+        else:
+            save_file("csv/polarization" + str(i) + ".csv", headers, 
+                [temp, px, py, pz, px_err, py_err, pz_err,])
 
         plt.errorbar(temp, np.abs(px), yerr=px_err, marker ="<", c=colors[i])
         plt.errorbar(temp, np.abs(py), yerr=py_err, marker =">", c=colors[i])
@@ -398,13 +614,17 @@ def display_polarization(temp, strain):
 
     plt.tight_layout(pad = 3)
 
-    plt.ylabel(r"$P_z$ (C/m2)", fontsize = 14)
+    plt.ylabel(r"$P$ (C/m2)", fontsize = 14)
     plt.xlabel("T (K)", fontsize = 14)
     
     plt.legend(frameon = True, fontsize = 14)
     plt.grid(True)
     
-    plt.savefig("plots/polarization.png")
+    if module:
+        plt.savefig("plots/abs_polarization.png")
+    else:
+        plt.savefig("plots/polarization.png")
+
     plt.draw()
 
 #####################################################################
@@ -432,21 +652,42 @@ if __name__ == "__main__":
     if plot_AFDa: # plot AFDa if needed
         print("\nGenerating AFDa plot...")
         start = time.time()
-        display_AFD(TEMPERATURES, STRAINS, mode="a")
+        display_AFD(TEMPERATURES, STRAINS, mode="a", threshold=1)
         end = time.time()
         print("\n DONE! Time elapsed: {:.3f}s".format(end-start))
 
     if plot_AFDi: # plot AFDi if needed
         print("\nGenerating AFDi plot...")
         start = time.time()
-        display_AFD(TEMPERATURES, STRAINS, mode="i")
+        display_AFD(TEMPERATURES, STRAINS, mode="i", threshold=0.5)
         end = time.time()
         print("\n DONE! Time elapsed: {:.3f}s".format(end-start))
 
-    if plot_AFDi: # plot FE if needed
-        print("\nGenerating FE plot...")
+    if plot_full_FE: # plot full B-site FE if needed
+        print("\nGenerating B-site full FE plot...")
         start = time.time()
-        display_FE(TEMPERATURES, STRAINS)
+        display_full_FE(TEMPERATURES, STRAINS, module=True)
+        end = time.time()
+        print("\n DONE! Time elapsed: {:.3f}s".format(end-start))
+
+    if plot_domain_full_FE: # plot full B-site domain FE if needed
+        print("\nGenerating domain B-site full FE plot...")
+        start = time.time()
+        display_full_FE(TEMPERATURES, STRAINS, module=False)
+        end = time.time()
+        print("\n DONE! Time elapsed: {:.3f}s".format(end-start))
+
+    if plot_simple_FE_B: # plot simple B-site FE if needed
+        print("\nGenerating B-site simple FE plot...")
+        start = time.time()
+        display_simple_FE(TEMPERATURES, STRAINS, mode="B")
+        end = time.time()
+        print("\n DONE! Time elapsed: {:.3f}s".format(end-start))
+
+    if plot_simple_FE_A: # plot simple A-site FE if needed
+        print("\nGenerating A-site simple FE plot...")
+        start = time.time()
+        display_simple_FE(TEMPERATURES, STRAINS, mode="A")
         end = time.time()
         print("\n DONE! Time elapsed: {:.3f}s".format(end-start))
 
@@ -457,17 +698,24 @@ if __name__ == "__main__":
         end = time.time()
         print("\n DONE! Time elapsed: {:.3f}s".format(end-start))
 
-    if plot_polarization: # plot strain if needed
+    if plot_polarization: # plot polarization if needed
         print("\nGenerating polarization plot...")
         start = time.time()
-        display_polarization(TEMPERATURES, STRAINS)
+        display_polarization(TEMPERATURES, STRAINS, module=True)
+        end = time.time()
+        print("\n DONE! Time elapsed: {:.3f}s".format(end-start))
+
+    if plot_domain_polarization: # plot polarization if needed
+        print("\nGenerating domain polarization plot...")
+        start = time.time()
+        display_polarization(TEMPERATURES, STRAINS, module=False)
         end = time.time()
         print("\n DONE! Time elapsed: {:.3f}s".format(end-start))
    
     if show_plots:
         print("\n Displaying selected plots...")
         plt.show()
-    
+
     print("\nEVERYTHING DONE!")
 
 #####################################################################

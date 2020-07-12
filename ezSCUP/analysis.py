@@ -323,7 +323,7 @@ class BornPolarization():
         return pols_by_layer
 
         
-    def unit_cell_polarization(self, born_charges):
+    def perovs_unit_cell_polarization(self, born_charges):
 
         """
 
@@ -343,6 +343,28 @@ class BornPolarization():
                 raise ezSCUP.exceptions.InvalidLabel
 
         
+        A, B, Ox, Oy, Oz = labels
+
+        FE_mode=[  # atom, hopping, weight
+            # "frame"
+            [A, [0, 0, 0], 1./8.],
+            [A, [1, 0, 0], 1./8.],
+            [A, [1, 1, 0], 1./8.],
+            [A, [0, 1, 0], 1./8.],
+            [A, [0, 0, 1], 1./8.],
+            [A, [1, 0, 1], 1./8.],
+            [A, [1, 1, 1], 1./8.],
+            [A, [0, 1, 1], 1./8.],
+            # "octahedra"
+            [B, [0, 0, 0], 1.], # b site
+            [Ox, [0, 0, 0], 1./2.], 
+            [Ox, [1, 0, 0], 1./2.],
+            [Oy, [0, 0, 0], 1./2.],
+            [Oy, [0, 1, 0], 1./2.],
+            [Oz, [0, 0, 0], 1./2.],
+            [Oz, [0, 0, 1], 1./2.]
+        ]
+
         cnts = self.config.lat_constants
         stra = self.config.strains
 
@@ -357,14 +379,18 @@ class BornPolarization():
                 for z in range(self.supercell[2]):
 
                     pol = np.zeros(3)
+                    cell = np.array([x,y,z])
 
-                    for label in self.config.elements:
+                    for atom in FE_mode:
 
-                        tau = self.config.cells[x,y,z].displacements[label]
-                        charges = born_charges[label]
+                        atom_cell = np.mod(cell + atom[1], self.supercell)
+                        nx, ny, nz = atom_cell
+
+                        tau = self.config.cells[nx,ny,nz].displacements[atom[0]]
+                        charges = born_charges[atom[0]]
                         
                         for i in range(3):
-                            pol[i] += charges[i]*tau[i]
+                            pol[i] += atom[2]*charges[i]*tau[i]
 
                     pol = pol/ucell_volume # in e/bohr2
                     pol = pol*1.60217646e-19 # to C/bohr
@@ -511,6 +537,13 @@ def perovskite_AFD(config, labels, mode="a"):
         z_distortions = analyzer.measure(config.supercell, unit_cell, AFDa_Z)
         z_angles = np.arctan(z_distortions/BO_dist)*180/np.pi
 
+        for x in range(config.supercell[0]):
+            for y in range(config.supercell[1]):
+                for z in range(config.supercell[2]):
+                    x_angles[x,y,z] = (-1)**x * (-1)**y * (-1)**z * x_angles[x,y,z]
+                    y_angles[x,y,z] = (-1)**x * (-1)**y * (-1)**z * y_angles[x,y,z]
+                    z_angles[x,y,z] = (-1)**x * (-1)**y * (-1)**z * z_angles[x,y,z]
+
         return (x_angles, y_angles, z_angles)
 
     else:
@@ -523,6 +556,13 @@ def perovskite_AFD(config, labels, mode="a"):
 
         z_distortions = analyzer.measure(config.supercell, unit_cell, AFDi_Z)
         z_angles = np.arctan(z_distortions/BO_dist)*180/np.pi
+
+        for x in range(config.supercell[0]):
+            for y in range(config.supercell[1]):
+                for z in range(config.supercell[2]):
+                    x_angles[x,y,z] = (-1)**y * (-1)**z * x_angles[x,y,z]
+                    y_angles[x,y,z] = (-1)**x * (-1)**z * y_angles[x,y,z]
+                    z_angles[x,y,z] = (-1)**x * (-1)**y * z_angles[x,y,z]
 
         return (x_angles, y_angles, z_angles)
 

@@ -1,0 +1,28 @@
+#!/bin/bash
+
+export PBS_O_WORKDIR=$PWD
+
+qsub << eor
+#!/bin/bash
+#PBS -q citimac_big
+#PBS -l nodes=1:ppn=20
+#PBS -V
+#PBS -N "SrTiO3_low"
+
+# importa todo lo necesario
+source /software/citimac/retos/init/lmod_reset.sh
+module load intel/2018b 
+module load Python/3.6.6-intel-2018b
+
+export OMP_NUM_THREADS=20
+
+# cambia al directorio actual
+cd $PBS_O_WORKDIR
+
+# programa a ejecutar
+python main.py
+
+# /home/citimac/jjunquer/Code/Git/scaleup/Obj/Intel-Parallel-OpenMP/src/scaleup.x < input.fdf > output
+
+eor
+

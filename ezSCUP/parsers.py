@@ -112,6 +112,7 @@ class RestartParser:
         self.ncells = int(self.supercell[0]*self.supercell[1]*self.supercell[2])
         self.nats, self.nels = list(map(int, f.readline().split()))
         self.elements = f.readline().split()
+        self.species = self.elements.copy()
 
         # adjust final element names
         if self.nats != self.nels:
@@ -254,6 +255,7 @@ class REFParser:
         self.ncells = int(self.supercell[0]*self.supercell[1]*self.supercell[2])
         self.nats, self.nels = list(map(int, f.readline().split()))
         self.elements = f.readline().split()
+        self.species = self.elements.copy()
 
         # adjust final element names
         if self.nats != self.nels:

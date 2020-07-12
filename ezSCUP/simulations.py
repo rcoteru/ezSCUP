@@ -17,7 +17,7 @@ import numpy as np          # matrix support
 # standard library imports
 from shutil import move,rmtree      # remove output folder
 from pathlib import Path            # general folder management
-import os, sys                      # remove files, get pwd
+import os, sys, csv                 # remove files, get pwd
 import pickle                       # store parameter vectors
 import time                         # check simulation run time
 
@@ -551,8 +551,10 @@ class MCConfiguration:
         self.supercell = self.refp.supercell
         self.lat_constants = self.refp.lat_constants
         self.elements = self.refp.elements
+        self.species = self.refp.species
         self.cells = self.refp.cells
         self.nats = self.refp.nats
+        self.nels = self.refp.nels
 
         ####### obtain average strains and displacements #######
 
@@ -626,8 +628,10 @@ class MCConfiguration:
         self.refp.load(os.path.join(self.name + "_FINAL.REF"))
         self.supercell = self.refp.supercell
         self.elements = self.refp.elements
+        self.species = self.refp.species
         self.cells = self.refp.cells
         self.nats = self.refp.nats
+        self.nels = self.refp.nels
 
         ####### obtain average strains and displacements #######
 
@@ -677,6 +681,56 @@ class MCConfiguration:
         return ldata
 
     #######################################################
+
+    def write_eq_geometry(self, fname):
+
+        """
+
+        Writes the equilibrium geometry (ScaleUp format) onto a file.
+
+        Parameters:
+        ----------
+
+        - fname  (string): File where to write the geometry.
+        """
+
+        f = open(fname, 'wt')
+        tsv = csv.writer(f, delimiter="\t")
+
+        tsv.writerow(list(self.supercell))      # supercell
+        tsv.writerow([self.nats, self.nels])    # number of atoms, elements
+        tsv.writerow(self.species)              # element species
+        
+        pstrains = list(self.strains)
+        pstrains = ["{:.8E}".format(s) for s in pstrains]
+        tsv.writerow(pstrains)                  # strains
+
+        for x in range(self.supercell[0]):
+            for y in range(self.supercell[1]):
+                for z in range(self.supercell[2]):
+ 
+                    cell = self.cells[x,y,z]
+    
+                    for i in range(self.nats):
+                        
+                        line = [x, y ,z, i+1]
+
+                        if i+1 > self.nels:
+                            species = self.nels
+                        else:
+                            species = i+1
+                        
+                        line.append(species)
+
+                        disps = list(cell.displacements[self.elements[i]])
+                        disps = ["{:.8E}".format(d) for d in disps]
+
+                        line = line + disps
+                    
+                        tsv.writerow(line)
+        
+        f.close()
+
 
     def print_all(self):
 

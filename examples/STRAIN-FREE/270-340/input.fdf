@@ -12,9 +12,9 @@ No_electron
 #      (modifiable from ezSCUP)      #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 %block Supercell
-3 3 3
+10 10 10
 %endblock Supercell    
-Print_std_lattice_nsteps 50 
+Print_std_lattice_nsteps 25 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
@@ -40,8 +40,8 @@ run_mode monte_carlo
 MC_strains .true.			         # simulate strains (IMPORTANT)
 MC_temperature 10 kelvin	         # Monte Carlo temperature (IRRELEVANT VALUE)
 MC_annealing_rate 1			         # annealing rate, 1 for constant temperature (IMPORTANT)
-MC_nsweeps 2000		    	         # number of MC sweeps (EZSCUP MODIFIABLE)
-MC_max_step_d 0.5 ang		         # max monte carlo jump (EZSCUP MODIFIABLE)
+MC_nsweeps 80000	    	         # number of MC sweeps (EZSCUP MODIFIABLE)
+MC_max_step_d 0.25 ang		         # max monte carlo jump (EZSCUP MODIFIABLE)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
@@ -52,7 +52,7 @@ MC_max_step_d 0.5 ang		         # max monte carlo jump (EZSCUP MODIFIABLE)
 #      (modifiable from ezSCUP)      #      
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 Print_justgeo .true.	
-n_write_mc 250	
+n_write_mc 50	
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
