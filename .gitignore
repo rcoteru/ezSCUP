@@ -11,6 +11,7 @@
 
 # Output Files
 *.png
+!example.png
 *.csv
 *.restart
 *.REF
