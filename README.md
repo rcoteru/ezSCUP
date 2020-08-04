@@ -10,7 +10,8 @@ This module has been developed as an integral part of my Bachelor's final-year t
 
 - Schedule simulations in a grid of temperatures, strains, pressures and electric fields.
 - Produce en equilibrium geometry for each configuration, and access all its output data through Python.
-- Project structural modes onto said equilibrium geometry, such as the ferroelectric (FE) or antiferrodistortive (AFD) modes in perovskites.
+- Project structural modes onto said equilibrium geometry, such as the ferroelectric (FE) 
+or antiferrodistortive (AFD) modes in perovskites.
 - Obtain the emergent polarization from the collective atomic displacements via the use of Born effective charges.
 - Observe (within large enough simulation supercells) domain structures through a per-unit-cell application of the two previous features.
 
