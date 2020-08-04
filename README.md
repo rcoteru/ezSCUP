@@ -4,7 +4,7 @@ ezSCUP is a Python module designed to facilitate the execution of SCALE-UP simul
 
 SCALE-UP (short for **S**econd-principles **C**omputational **A**pproach for **L**attice and **E**lectrons) is a Second-Principles DFT simulation program written in Fortran and developed by researchers from the University of Catabria (UC, Spain) and the Luxembourg Institute of Science and Technology (LIST), as well as by a number of collaborators [[+info]](https://www.secondprinciples.unican.es/).  
 
-This module has been developed as an integral part of my Bachelor's final-year thesis on structural transititions within the perovskite SrTiO_3. 
+This module has been developed as an integral part of my Bachelor's final-year thesis on structural transititions within the perovskite SrTiO3. 
 
 ## Features
 
@@ -17,5 +17,5 @@ or antiferrodistortive (AFD) modes in perovskites.
 
 ## Usage
 
-There are some examples within this repository corresponding to several use cases explored in my thesis. 
+There are some examples within this repository corresponding to several use cases explored in my thesis. In particular, the STRAIN-FREE setup attempts to simulate the AFD phase transition present in SrTiO3 at 105K, whereas within STRAIN-FIXED it can be observed how SrTiO3 responds to epitaxial strain restrictions. The SrTiO3 model contained in these examples corresponds to the one used by Wojdeł et al. in [this paper](https://iopscience.iop.org/article/10.1088/0953-8984/25/30/305401).
 
