@@ -37,11 +37,17 @@ class ModeAnalyzer():
 
     """ 
     
-    Projects structural modes (patterns) on a given configuration.
+    Projects structural modes (patterns) on a given configuration's
+    equilibrium geometry.
 
     # BASIC USAGE # 
 
+    
+
     # PATTERN DEFINITION #
+
+    Patterns are basically a list of weighted atomic displacementes,
+
 
     [label, hopping, weight, target vector]
 

@@ -293,6 +293,28 @@ class MCSimulation:
 
         # total number of simulations 
         nsims = self.temp.size*len(self.strain)*len(self.field)*len(self.stress)
+
+        # save simulation setup file 
+        print("Saving simulation setup file... ")
+
+        setup = {
+            "name": self.name,
+            "supercell": self.supercell,
+            "elements": self.elements,
+            "nats": self.nats,
+            "temp": self.temp,
+            "strain": self.strain,
+            "stress": self.stress,
+            "field": self.field
+            }
+
+        simulation_setup_file = os.path.join(main_output_folder, cfg.SIMULATION_SETUP_FILE)
+
+        with open(simulation_setup_file, "wb") as f:
+            pickle.dump(setup, f)
+
+        print("")
+
         
         # starting time of the simulation process
         main_start_time = time.time()
@@ -371,26 +393,6 @@ class MCSimulation:
                         print("\n Configuration finished! (time elapsed: {:.3f}s)".format(conf_time))
                         print("All files stored in output/" + subfolder_name + " succesfully.\n")
 
-        # save simulation setup file 
-        print("Saving simulation setup file... ")
-
-        setup = {
-            "name": self.name,
-            "supercell": self.supercell,
-            "elements": self.elements,
-            "nats": self.nats,
-            "temp": self.temp,
-            "strain": self.strain,
-            "stress": self.stress,
-            "field": self.field
-            }
-
-        simulation_setup_file = os.path.join(main_output_folder, cfg.SIMULATION_SETUP_FILE)
-
-        with open(simulation_setup_file, "wb") as f:
-            pickle.dump(setup, f)
-
-        print("")
 
         # cleanup
         if strain != None:
