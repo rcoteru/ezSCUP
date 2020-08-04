@@ -17,5 +17,5 @@ or antiferrodistortive (AFD) modes in perovskites.
 
 ## Usage
 
-There are some examples within this repository corresponding to several use cases explored in my thesis. In particular, the STRAIN-FREE setup attempts to simulate the AFD phase transition present in SrTiO3 at 105K, whereas within STRAIN-FIXED it can be observed how SrTiO3 responds to epitaxial strain restrictions. The SrTiO3 model contained in these examples corresponds to the one used by Wojdeł et al. in [this paper](https://iopscience.iop.org/article/10.1088/0953-8984/25/30/305401).
+There are some examples within this repository corresponding to several use cases explored in my thesis. In particular, the STRAIN-FREE setup attempts to simulate the AFD phase transition present in SrTiO3 at 105K, whereas within STRAIN-FIXED it can be observed how SrTiO3 responds to epitaxial strain restrictions. The SrTiO3 model contained in these examples corresponds to the one used by Wojdeł et al. in [here](https://iopscience.iop.org/article/10.1088/0953-8984/25/30/305401).
 
