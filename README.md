@@ -6,6 +6,7 @@ SCALE-UP (short for **S**econd-principles **C**omputational **A**pproach for **L
 
 This module has been developed as an integral part of my Bachelor's final-year thesis on structural transititions within the perovskite SrTiO3. 
 
+
 ## Features
 
 - Schedule simulations in a grid of temperatures, strains, pressures and electric fields.
@@ -18,6 +19,7 @@ or antiferrodistortive (AFD) modes in perovskites.
 ## Usage
 
 There are some examples within this repository corresponding to several use cases explored in my thesis. In particular, the STRAIN-FREE setup attempts to simulate the AFD phase transition present in SrTiO3 at 105K, whereas within STRAIN-FIXED it can be observed how SrTiO3 responds to epitaxial strain restrictions. The SrTiO3 model contained in these examples corresponds to the one used by Wojdeł et al. in [here](https://iopscience.iop.org/article/10.1088/0953-8984/25/30/305401).
+
 
 <p align="center"> 
 <img src="example.png">
