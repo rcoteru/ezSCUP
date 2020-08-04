@@ -815,6 +815,10 @@ class MCSimulationParser:
 
     def index(self):
 
+        """
+        Loads the simualtion run's parameters from the "simulation.info" file.
+        """
+
         # get the current path
         current_path = os.getcwd()
 
@@ -843,6 +847,24 @@ class MCSimulationParser:
     #######################################################
 
     def access(self, t, p=None, s=None, f=None):
+
+        """
+
+        Accesses configuration data for the specified parameters.
+
+        Parameters:
+        ----------
+
+        - t (float): Temperature (compulsory)
+        - p (array): Pressure (optional)
+        - s (array): Strain (optional)
+        - f (array): Electric Field (optional)
+
+        Return:
+        ----------
+            - The MCConfiguration object corresponding to the desired configuration.
+
+        """
 
         # stress vector, optional
         if p == None:

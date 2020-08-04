@@ -1,5 +1,9 @@
 """
 Collection of classes for general analysis of output data.
+
+Contains two classes to both project structural modes and 
+calculate macroscopic polarizations from born effective charges.
+There are also functions to analyze the AFD and FE modes of perovskites.
 """
 
 __author__ = "Raúl Coterillo"

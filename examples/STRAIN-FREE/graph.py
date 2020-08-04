@@ -1,3 +1,12 @@
+"""
+
+Generates the graphs presented in the thesis 
+from the simulation data created after running "main.py"
+within each folder.
+
+"""
+
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np

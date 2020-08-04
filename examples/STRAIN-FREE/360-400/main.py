@@ -1,5 +1,9 @@
-"""Example script"""
+"""
 
+Executes STO simulations in a temperature range from 20 to 400K in order
+to observe its AFD phase transition.
+
+"""
 __author__ = "Raúl Coterillo"
 __email__  = "raulcote98@gmail.com"
 __status__ = "Development"

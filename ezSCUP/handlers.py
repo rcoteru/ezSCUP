@@ -1,7 +1,7 @@
 """
 Collection of classes to handle interaction with ScaleUp.
 
-Allow loading FDF files, to later modify its 
+Allows loading FDF files, to later modify its 
 settings and or launch ScaleUp simulations.
 """
 
@@ -28,12 +28,6 @@ import ezSCUP.exceptions
 #####################################################################
 
 # class SCUPHandler()
-
-#####################################################################
-## EXCEPTION DEFINITIONS
-#####################################################################
-
-# TO BE IMPLEMENTED
 
 #####################################################################
 ## CLASS DEFINITIONS
