@@ -4,13 +4,17 @@ ezSCUP is a Python module designed to facilitate the execution of SCALE-UP simul
 
 SCALE-UP (short for **S**econd-principles **C**omputational **A**pproach for **L**attice and **E**lectrons) is a Second-Principles DFT simulation program written in Fortran and developed by researchers from the University of Catabria (UC, Spain) and the Luxembourg Institute of Science and Technology (LIST), as well as by a number of collaborators [[+info]](https://www.secondprinciples.unican.es/).  
 
-This module has been developed as part of my Bachelor's final-year thesis.
+This module has been developed as an integral part of my Bachelor's final-year thesis on structural transititions within the perovskite SrTiO_3. 
 
-## Installation
+## Features
 
--section under development-
+- Schedule simulations in a grid of temperatures, strains, pressures and electric fields.
+- Produce en equilibrium geometry for each configuration, and access all its output data through Python.
+- Project structural modes onto said equilibrium geometry, such as the ferroelectric (FE) or antiferrodistortive (AFD) modes in perovskites.
+- Obtain the emergent polarization from the collective atomic displacements via the use of Born effective charges.
+- Observe (within large enough simulation supercells) domain structures through a per-unit-cell application of the two previous features.
 
 ## Usage
 
--section under development-
+There are some examples within this repository corresponding to several use cases explored in my thesis. 
 
