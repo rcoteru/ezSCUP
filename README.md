@@ -13,7 +13,7 @@ This module has been developed as an integral part of my Bachelor's final-year t
 - Project structural modes onto said equilibrium geometry, such as the ferroelectric (FE) 
 or antiferrodistortive (AFD) modes in perovskites.
 - Obtain the emergent polarization from the collective atomic displacements via the use of Born effective charges.
-- Observe (within large enough simulation supercells) domain structures through a per-unit-cell application of the two previous features.
+- Observe (in large enough simulation supercells) domain structures through a per-unit-cell application of the two previous features.
 
 ## Usage
 
