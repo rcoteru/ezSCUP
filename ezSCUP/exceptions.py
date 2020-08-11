@@ -12,6 +12,10 @@ class Error(Exception):
    
 #####################################################################
 
+class RestartNotMatching(Error):
+   """Raised when attempting to load an restart file that does not match the exisiting geometry."""
+   pass
+
 class NoSCUPExecutableDetected(Error):
    """Raised when attempting to access the output folder when it doesn't exist."""
    pass

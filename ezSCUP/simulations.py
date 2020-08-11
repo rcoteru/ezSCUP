@@ -13,6 +13,7 @@ __status__ = "Development"
 
 # third party imports
 import numpy as np          # matrix support
+import pandas as pd         # .out file loading
 
 # standard library imports
 from shutil import move,rmtree      # remove output folder
@@ -23,6 +24,7 @@ import time                         # check simulation run time
 
 # package imports
 from ezSCUP.parsers import REFParser, RestartParser, OutParser
+from ezSCUP.geometry import Geometry
 from ezSCUP.generators import RestartGenerator
 from ezSCUP.structures import FDFSetting
 from ezSCUP.handlers import SCUPHandler
@@ -444,7 +446,7 @@ class MCConfiguration:
 
         sim = MCConfigurationParser()           # instantiate the parser class
         config = sim.access(t, s=s, [...])      # access the configuration (this class)
-        cell = config.cells[x,y,z]              # access the desired cell
+        cell = config.geo.cells[x,y,z]          # access the desired cell
         cell.positions["element_label"]         # position data by label
         cell.displacements["element_label"]     # displacement data by label
 
@@ -478,29 +480,12 @@ class MCConfiguration:
      - step_threshold: only pick partials with higher step 
         than this. DEFAULT: cfg.MC_EQUILIBRATION_STEPS
      
-     - supercell (array): supercell shape
-     - lat_constants (array): lattice constants, in Bohr (a, b, c)
-     - lat_angles (array): lattice angles, in degress (alfa, beta, gamma)
-     - elements (list): list of element labels within the cells
-     - nats (int): number of atoms within the cells
-
-     - refp (REFPaser): .restart file parser (ezSCUP.parsers)
-     - resp (RestartParser): .REF file parser (ezSCUP.parsers)
-     - outp (OutParser): output file parser (ezSCUP.parsers)
-
+     - geo (Geometry): class containing the system's geometry (ezSCUP.geometry)
     """ 
 
-    ########################
-    #      ATTRIBUTES      #
-    ########################
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    refp = REFParser()      # .restart file parser
-    resp = RestartParser()  # .REF file parser
-    outp = OutParser()      # output file parser
-
-    #######################################################
-
-    def load(self, folder_name, base_sim_name, config_data=None):
+    def auto_load(self, folder_name, base_sim_name, config_data):
 
         """
         
@@ -517,7 +502,13 @@ class MCConfiguration:
 
         """
 
-        # loads basic filename information
+        # load configuration parameters
+        self.temp =     config_data[0]
+        self.pressure = config_data[1]
+        self.strain =   config_data[2]
+        self.field =    config_data[3]
+
+        # load file and folder names
         self.name = base_sim_name
         self.folder_name = folder_name
         self.current_directory = os.getcwd()
@@ -525,86 +516,38 @@ class MCConfiguration:
         folder = os.path.join(self.current_directory, "output", folder_name)
         self.folder_path = folder
 
-        # partial .restart files for each MC interval
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+        # get partials, number of MC steps, etc
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+        # partial .restart files
         partials = [k for k in os.listdir(folder) if 'partial' in k]
         partials = sorted([k for k in partials if '.restart' in k])
         self.partials = [os.path.join(self.folder_path, p) for p in partials]
-
-        # get total number of steps
+        # get total number of MC steps
         self.total_steps = max([int(p[len(base_sim_name)+10:-8]) for p in partials])
         self.step_threshold = cfg.MC_EQUILIBRATION_STEPS 
-
         # check if any measurements are taken into consideration
         if (self.total_steps <= self.step_threshold):
             print("Step threshold {:d} greater than total steps ({:d}):".format(self.step_threshold, self.total_steps))
             print(r"Reducing to 20% of total steps.")
             self.step_threshold = int(0.2*self.total_steps)
-        
         # selects only partials above self.step_threshold steps
         step_filter = [int(p[len(base_sim_name)+10:-8]) > self.step_threshold for p in partials]
-        
         partials = [p for i, p in enumerate(partials) if step_filter[i]]
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-        # number of partials selected
-        self.nmeas = len(partials)
+        reference_file = os.path.join(folder, base_sim_name + "_FINAL.REF")
 
-        # loads cells with only their original location
-        self.refp.load(os.path.join(folder, base_sim_name + "_FINAL.REF"))
-        self.supercell = self.refp.supercell
-        self.lat_constants = self.refp.lat_constants
-        self.elements = self.refp.elements
-        self.species = self.refp.species
-        self.cells = self.refp.cells
-        self.nats = self.refp.nats
-        self.nels = self.refp.nels
+        self.geo = Geometry(reference_file)
+        self.geo.load_equilibrium_displacements(partials)
 
-        ####### obtain average strains and displacements #######
-
-        # first, initialize the attributes for strain and displacements
-        self.strains = np.zeros(6)
-        for x in range(self.supercell[0]):
-            for y in range(self.supercell[1]):
-                for z in range(self.supercell[2]):
-
-                    self.cells[x,y,z].displacements = {}
-                    for atom in self.cells[x,y,z].positions:
-                        self.cells[x,y,z].displacements[atom] = np.zeros(3)
-
-        # add all strains and displacements
-        for f in partials: # over all partial .restarts
-
-            self.resp.load(os.path.join(folder, f)) # load the partial
-            self.strains += self.resp.strains # add the strains
-
-            for x in range(self.supercell[0]):
-                for y in range(self.supercell[1]):
-                    for z in range(self.supercell[2]):
-                        for atom in self.cells[x,y,z].displacements: 
-                            self.cells[x,y,z].displacements[atom] += self.resp.cells[x,y,z].displacements[atom]
-
-        # divide by the number of measurementes
-        self.strains = self.strains/self.nmeas
-
-        for x in range(self.supercell[0]):
-                for y in range(self.supercell[1]):
-                    for z in range(self.supercell[2]):
-                        for atom in self.cells[x,y,z].displacements: 
-                            self.cells[x,y,z].displacements[atom] = self.cells[x,y,z].displacements[atom]/self.nmeas
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         
     def load_unique(self, base_sim_name):
 
         """
         
-        Load the given configuration folder's data.
-
-        Parameters:
-        ----------
-
-        - folder_name  (string): configuration folder name,
-            usually [ScaleUP system_name].c[configuration number]
-
-        - base_sim_name (list): basename of the ScaleUP files,
-            usually [ScaleUP system_name].T[temperature in integer format]
+        Loads a single point
 
         """
 
@@ -621,45 +564,15 @@ class MCConfiguration:
 
         # no partials loaded
         self.partials = []
-        self.nmeas = 0
-        self.total_steps = None
-        self.step_threshold = cfg.MC_EQUILIBRATION_STEPS 
+
+        reference_file = os.path.join(self.name + "_FINAL.REF")
+        restart_file = os.path.join(self.name + "_FINAL.restart")
+
+        self.geo = Geometry(reference_file)
+        self.geo.load_restart(restart_file)
         
 
-        # loads cells with only their original location
-        self.refp.load(os.path.join(self.name + "_FINAL.REF"))
-        self.supercell = self.refp.supercell
-        self.elements = self.refp.elements
-        self.species = self.refp.species
-        self.cells = self.refp.cells
-        self.nats = self.refp.nats
-        self.nels = self.refp.nels
-
-        ####### obtain average strains and displacements #######
-
-        # first, initialize the attributes for strain and displacements
-        self.strains = np.zeros(6)
-        for x in range(self.supercell[0]):
-            for y in range(self.supercell[1]):
-                for z in range(self.supercell[2]):
-
-                    self.cells[x,y,z].displacements = {}
-                    for atom in self.cells[x,y,z].positions:
-                        self.cells[x,y,z].displacements[atom] = np.zeros(3)
-
-        # add strains and displacements
-        self.resp.load(self.name + "_FINAL.restart") # load the partial
-        self.strains = self.resp.strains # add the strains
-
-        for x in range(self.supercell[0]):
-            for y in range(self.supercell[1]):
-                for z in range(self.supercell[2]):
-                    for atom in self.cells[x,y,z].displacements: 
-                        self.cells[x,y,z].displacements[atom] = self.resp.cells[x,y,z].displacements[atom]
-
-        pass
-
-    #######################################################
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def lattice_output(self):
         
@@ -682,79 +595,7 @@ class MCConfiguration:
 
         return ldata
 
-    #######################################################
-
-    def write_eq_geometry(self, fname):
-
-        """
-
-        Writes the equilibrium geometry (ScaleUp format) onto a file.
-
-        Parameters:
-        ----------
-
-        - fname  (string): File where to write the geometry.
-        """
-
-        f = open(fname, 'wt')
-        tsv = csv.writer(f, delimiter="\t")
-
-        tsv.writerow(list(self.supercell))      # supercell
-        tsv.writerow([self.nats, self.nels])    # number of atoms, elements
-        tsv.writerow(self.species)              # element species
-        
-        pstrains = list(self.strains)
-        pstrains = ["{:.8E}".format(s) for s in pstrains]
-        tsv.writerow(pstrains)                  # strains
-
-        for x in range(self.supercell[0]):
-            for y in range(self.supercell[1]):
-                for z in range(self.supercell[2]):
- 
-                    cell = self.cells[x,y,z]
-    
-                    for i in range(self.nats):
-                        
-                        line = [x, y ,z, i+1]
-
-                        if i+1 > self.nels:
-                            species = self.nels
-                        else:
-                            species = i+1
-                        
-                        line.append(species)
-
-                        disps = list(cell.displacements[self.elements[i]])
-                        disps = ["{:.8E}".format(d) for d in disps]
-
-                        line = line + disps
-                    
-                        tsv.writerow(line)
-        
-        f.close()
-
-
-    def print_all(self):
-
-        """ Prints all available configuration info. """
-
-        print("Configuration name: " + self.folder_name + "\n")
-        print("Total MC steps:" + str(self.total_steps))
-        print("Eq. steps: " + str(self.step_threshold))
-        print("Supercell shape: " + str(self.supercell))
-        print("Atoms per cell: " + str(self.nats))
-        print("Elements in cell:")
-        print(self.elements)
-        print("Average cell strains:") 
-        print(self.strains)
-        print("")
-        for c in self.cells:
-            print(self.cells[c])
-            self.cells[c].print_atom_pos()
-            self.cells[c].print_atom_disp()
-            print("")
-
-    #######################################################
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 #####################################################################
 ## SIMULATION PARSER (WHOLE OUTPUT FOLDER MANAGEMENT)
@@ -903,7 +744,7 @@ class MCSimulationParser:
         subfolder_name = self.name + "." + conf_name
         sim_name = self.name + "T{:d}".format(int(t))
 
-        self.parser.load(subfolder_name, sim_name)
+        self.parser.auto_load(subfolder_name, sim_name, config_data=[t, p, s, f])
         
         return self.parser
 

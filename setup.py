@@ -4,12 +4,12 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='ezSCUP',
-      version='0.1.1',
+      version='v1.0',
       description='SCALE-UP Python Wrapper',
-      long_description=long_description,
       url='https://github.com/rcote98/ezSCUP',
       author='Raúl Coterillo',
       author_email='raulcote98@gmail.com',
+      download_url = 'https://github.com/rcote98/ezSCUP/archive/v1.0.tar.gz',
       classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
