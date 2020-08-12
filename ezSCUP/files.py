@@ -1,5 +1,5 @@
 """
-Classes to handle writing output data files.
+Classes to handle writing output data files for external use.
 """
 
 __author__ = "Raúl Coterillo"

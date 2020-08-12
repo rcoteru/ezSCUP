@@ -73,6 +73,29 @@ class RestartGenerator:
                     
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         
+    def reset(self):
+
+        self.strains = np.zeros(6)
+
+        atom_displacement = {}             # empty atomic displacements
+        for j in range(self.nats):         # iterate over all atoms
+            atom_displacement[self.elements[j]] = np.zeros(3)
+
+        for x in range(self.supercell[0]):
+            for y in range(self.supercell[1]):
+                for z in range(self.supercell[2]):
+                    self.cells[x,y,z] = UnitCell([x, y, z], self.elements, displacements=deepcopy(atom_displacement))
+    
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def read(self):
+
+        # TODO
+
+        pass
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
     def write(self, fname):
 
         f = open(fname, 'wt')

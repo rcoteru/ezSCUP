@@ -7,7 +7,7 @@ settings and or launch ScaleUp simulations.
 
 __author__ = "Raúl Coterillo"
 __email__  = "raulcote98@gmail.com"
-__status__ = "Development"
+__status__ = "v2.0"
 
 # third party imports
 import numpy as np
@@ -18,20 +18,80 @@ from pathlib import Path
 import os, sys
 
 # package imports
-
-from ezSCUP.structures import FDFSetting
 import ezSCUP.settings as cfg
 import ezSCUP.exceptions
 
-#####################################################################
-## MODULE STRUCTURE
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# MODULE STRUCTURE
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+#
+# + FDFSetting()
+#   - __init__()
+#   - __str__()
+#
+# + class SCUPHandler()
+#   - __init__()
+#   - load()
+#   - save_as()
+#   - launch()
+#   - print_all()
+#
+#
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-# class SCUPHandler()
 
-#####################################################################
-## CLASS DEFINITIONS
-#####################################################################
+class FDFSetting():
+
+    """ 
+
+    Defines an standard (non-block) FDF setting.
+
+    # BASIC USAGE # 
+    
+    Allows storage of both value and unit (id needed)
+    for FDF file settings.
+
+    """
+
+    value = 0      # value of the setting
+    unit = ""      # unit, if applicable
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def __init__(self, value, unit=None):
+
+        """
+        
+        FDFSetting class constructor.
+
+        Parameters:
+        ----------
+
+        - value  (?): value of the setting
+
+        - unit (string): unit for the setting, if needed.
+
+        """
+
+        self.value = value
+        self.unit = str(unit).strip()
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def __str__(self):
+
+        """ Defines conversion to string for printing. """
+
+        if self.unit == "None":
+            return str(self.value)
+        else:
+            return str(self.value) + " " + self.unit
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+# ================================================================= #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ================================================================= #
 
 class SCUPHandler():
 
@@ -60,10 +120,12 @@ class SCUPHandler():
     settings = None             # Current settings
     original_settings = {}      # Original settings
 
-    #######################################################
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def __init__(self, scup_exec):
         self.scup_exec = scup_exec
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def load(self, fname):
         
@@ -127,8 +189,7 @@ class SCUPHandler():
         
         pass
 
-
-
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def save_as(self, fname):
 
@@ -171,6 +232,7 @@ class SCUPHandler():
         if cfg.PRINT_CONF_SETTINGS:
                 print("\n")
 
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def launch(self, output_file=None):
 
@@ -198,6 +260,7 @@ class SCUPHandler():
         # remove temporary input
         os.remove("modinput.fdf")
 
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def print_all(self):
 
@@ -205,4 +268,6 @@ class SCUPHandler():
             print(k, str(self.settings[k]))
 
         pass
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
             

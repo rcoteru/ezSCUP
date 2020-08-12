@@ -20,6 +20,9 @@ class NoSCUPExecutableDetected(Error):
    """Raised when attempting to access the output folder when it doesn't exist."""
    pass
 
+class MissingSetup(Error):
+   """Raised when a simulation run is attempted without the proper setup."""
+
 class MissingRequiredArguments(Error):
    """Raised when some of the required arguments for a function are missing"""
    pass

@@ -124,6 +124,42 @@ class Geometry():
     """
     Geometry container
 
+    # BASIC USAGE # 
+    
+    Reads simulation data from a given configuration's .REF file. 
+    By default this class starts empty, until a file is loaded with 
+    the load() method.
+
+    Basic information about the simulation such as supercell shape,
+    number of cells, elements, number of atoms per cell, lattice
+    constants and cell information are accessible via attributes.
+
+    # ACCESSING INDIVIDUAL CELL DATA #
+
+    In order to access cell data after loading a file just the "cells" 
+    attribute in the following manner:
+
+        parser = REFParser()                    # instantiate the class
+        parser.load("example.REF")              # load the target file
+        desired_cell = parser.cells[x,y,z]      # access the desired cell
+        desired_cell.pos["element_label"]       # access its position data by label
+
+    where x, y and z is the position of the desired cell in the supercell.
+    This will return a "Cell" class with an attribute "pos", a dictionary
+    with the position vector for each element label (more within the
+    next section)
+
+    More on the Cell class in ezSCUP.structures.
+
+    # ELEMENT LABELING #
+
+    By default, ScaleUp does not label elements in the output beside a 
+    non-descript number. This programs assigns a label to every atom in
+    order to easily access their data from dictionaries.
+
+    Suppose you have an SrTiO3 cell, only three elements but five atoms.
+    Then the corresponding labels would be ["Sr","Ti","O1","O2","O3"].
+
     Attributes:
     ----------
 
@@ -145,6 +181,18 @@ class Geometry():
     def __init__(self, reference_file):
 
         
+        """
+        
+        Loads the given .REF file.
+
+        Parameters:
+        ----------
+
+        - fname  (string): name of the .restart file
+
+        """
+
+
         #########
         # CHECK FILE EXISTS
         #########
@@ -218,7 +266,14 @@ class Geometry():
     def load_restart(self, restart_file):
 
         """
-        Loads a single restart file
+        
+        Loads the given .restart file.
+
+        Parameters:
+        ----------
+
+        - fname  (string): name of the .restart file
+
         """
 
         #########
