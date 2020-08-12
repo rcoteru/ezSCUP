@@ -212,6 +212,7 @@ class MCConfiguration:
         # selects only partials above self.step_threshold steps
         step_filter = [int(p[len(base_sim_name)+10:-8]) > self.step_threshold for p in partials]
         partials = [p for i, p in enumerate(partials) if step_filter[i]]
+        partials = [os.path.join(self.folder_path, p) for p in partials]
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
         reference_file = os.path.join(folder, base_sim_name + "_FINAL.REF")
@@ -340,7 +341,7 @@ class MCSimulationParser:
             # load simulation run info
             self.name      = setup["name"] 
             self.supercell = setup["supercell"]
-            self.elements  = setup["elements"]
+            self.species   = setup["species"]
             self.nats      = setup["nats"]
 
             self.mc_steps            = setup["mc_steps"]
@@ -382,19 +383,19 @@ class MCSimulationParser:
         """
 
         # stress vector, optional
-        if p == None:
+        if p is None:
             p = np.zeros(6)
         else:
             p = np.array(p)
 
         # strain vector list, optional
-        if s == None:
+        if s is None:
             s = np.zeros(6)
         else:
             s = np.array(s)
         
         # electric field vector list, optional
-        if f == None:
+        if f is None:
             f = np.zeros(3)
         else:
             f = np.array(f)
@@ -418,7 +419,9 @@ class MCSimulationParser:
         subfolder_name = self.name + "." + conf_name
         sim_name = self.name + "T{:d}".format(int(t))
 
-        self.parser.auto_load(subfolder_name, sim_name, config_data=[t, p, s, f])
+        folder = os.path.join(self.main_output_folder, subfolder_name)
+
+        self.parser.auto_load(folder, sim_name, config_data=[t, p, s, f])
         
         return self.parser
 
@@ -599,9 +602,9 @@ class MCSimulation:
                 Found already existing output 
                 folder named "{}",
                 all its contents are now lost.
-                Reason: OVERWRITE set to True.
-                """.format(self.output_folder))
+                Reason: OVERWRITE set to True.""".format(self.output_folder))
                 rmtree(self.main_output_folder)
+                os.makedirs(self.main_output_folder)
                 print("")
                 pass
             else:
@@ -609,8 +612,7 @@ class MCSimulation:
                 Found already existing output 
                 folder named "{}",
                 skipping simulation process.
-                Reason: OVERWRITE set to False.
-                """.format(self.output_folder))
+                Reason: OVERWRITE set to False.""".format(self.output_folder))
                 raise ezSCUP.exceptions.PreviouslyUsedOutputFolder()
 
         # adjust the supercell as needed
@@ -657,7 +659,6 @@ class MCSimulation:
                     setting.append("T")
                 else:
                     setting.append("F")
-            print(setting)
             self.sim.settings["fix_strain_component"] = [setting]
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -665,15 +666,16 @@ class MCSimulation:
         self.generator = RestartGenerator(self.supercell, self.species, self.nats)
 
         # print common simulation settings
-        print("\nCurrent FDF settings:")
-        self.sim.print_all()
-        print("")
+        if cfg.PRINT_CONF_SETTINGS:
+            print("Starting FDF settings:")
+            self.sim.print_all()
+            print("")
 
         # load simulation name
         self.name = self.sim.settings["system_name"].value
         
         # save simulation setup file 
-        print("\nSaving simulation setup file... ")
+        print("Saving simulation setup file... ")
 
         setup = {
             "name": self.name,
@@ -698,8 +700,8 @@ class MCSimulation:
         with open(simulation_setup_file, "wb") as f:
             pickle.dump(setup, f)
 
-        print("\n Simulation run has been properly configured.")
-        print("You may now proceed to launch it.\n")
+        print("\nSimulation run has been properly configured.")
+        print("You may now proceed to launch it.")
 
         self.SETUP = True # simulation run properly setup
 
@@ -707,7 +709,7 @@ class MCSimulation:
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    def change_output_folder(self, output_folder):
+    def change_output_folder(self, new_output_folder):
 
         # get the current path
         self.current_path = os.getcwd()
@@ -715,11 +717,11 @@ class MCSimulation:
         previous = self.output_folder
 
         # create output directory
-        print("Creating output folder...")
+        print("\nCreating new output folder...")
         try:
-            main_output_folder = os.path.join(self.current_path, output_folder)
+            main_output_folder = os.path.join(self.current_path, new_output_folder)
             os.makedirs(main_output_folder)
-            self.output_folder = output_folder
+            self.output_folder = new_output_folder
             self.main_output_folder = main_output_folder
 
         except FileExistsError: # check whether directory already exists
@@ -728,21 +730,22 @@ class MCSimulation:
                 Found already existing output 
                 folder named "{}",
                 all its contents are now lost.
-                Reason: OVERWRITE set to True.
-                """.format(self.output_folder))
-                rmtree(self.main_output_folder)
+                Reason: OVERWRITE set to True.""".format(self.output_folder))
+                rmtree(main_output_folder)
+                os.makedirs(main_output_folder)
+                self.output_folder = new_output_folder
+                self.main_output_folder = main_output_folder
                 print("")
                 pass
             else:
                 print("""
                 Found already existing output 
                 folder named "{}", aborting folder swap.
-                Reason: OVERWRITE set to False.
-                """.format(self.output_folder))
+                Reason: OVERWRITE set to False.""".format(self.output_folder))
                 raise ezSCUP.exceptions.PreviouslyUsedOutputFolder()
 
         # save simulation setup file 
-        print("\nSaving simulation setup file... ")
+        print("Saving simulation setup file... ")
 
         setup = {
             "name": self.name,
@@ -768,7 +771,7 @@ class MCSimulation:
         with open(simulation_setup_file, "wb") as f:
             pickle.dump(setup, f)
 
-        print('\n Output folder swap from "{}" to "{}" complete!\n'.format(previous, self.output_folder))
+        print('\nOutput folder swapped from "{}" to "{}".'.format(previous, self.output_folder))
 
         pass
 
@@ -860,14 +863,19 @@ class MCSimulation:
                          
                         if self.stress != None: # modify target stress, if needed
                             self.sim.settings["external_stress"] = [p]
-
+                        else:
+                            p = np.zeros(6)
                         
                         if self.strain != None: # set target strain, if needed
                             self.generator.strains = s
+                        else:
+                            s = np.zeros(6)
 
-                        
                         if self.field != None: # modify target field, if needed
                             self.sim.settings["static_electric_field"] = [f]
+                        else:
+                            f = np.zeros(3)
+
 
                         # define human output filename
                         output = sim_name + ".out"
@@ -884,16 +892,16 @@ class MCSimulation:
                         os.makedirs(configuration_folder)
 
                         files = os.listdir(self.current_path)
-                        for f in files:
-                            if sim_name in f:
-                                move(f, configuration_folder)
+                        for fi in files:
+                            if sim_name in fi:
+                                move(fi, configuration_folder)
                         
                         # finish time of the current conf
                         conf_finish_time = time.time()
 
                         conf_time = conf_finish_time-conf_start_time
 
-                        print("\n Configuration finished! (time elapsed: {:.3f}s)".format(conf_time))
+                        print("\nConfiguration finished! (time elapsed: {:.3f}s)".format(conf_time))
                         print("All files stored in output/" + subfolder_name + " succesfully.\n")
 
         self.generator.reset()
@@ -968,7 +976,8 @@ class MCSimulation:
                     field_counter = [np.array_equal(f,x) for x in self.field].index(True)
                     
                     # set starting geometry
-                    self.generator.cells = deepcopy(start_geo.cells)
+                    if start_geo != None and isinstance(start_geo, RestartGenerator):
+                        self.generator.cells = deepcopy(start_geo.cells)
 
                     tcount = 0
                     for t in temp_sequence:
@@ -1005,12 +1014,10 @@ class MCSimulation:
                          
                         if self.stress != None: # modify target stress, if needed
                             self.sim.settings["external_stress"] = [p]
-
                         
                         if self.strain != None: # set target strain, if needed
                             self.generator.strains = s
 
-                        
                         if self.field != None: # modify target field, if needed
                             self.sim.settings["static_electric_field"] = [f]
 
@@ -1029,9 +1036,9 @@ class MCSimulation:
                         os.makedirs(configuration_folder)
 
                         files = os.listdir(self.current_path)
-                        for f in files:
-                            if sim_name in f:
-                                move(f, configuration_folder)
+                        for fi in files:
+                            if sim_name in fi:
+                                move(fi, configuration_folder)
                         
                         # grab final geometry for next run if needed
                         if tcount < len(temp_sequence): 
@@ -1044,7 +1051,7 @@ class MCSimulation:
 
                         conf_time = conf_finish_time-conf_start_time
 
-                        print("\n Configuration finished! (time elapsed: {:.3f}s)".format(conf_time))
+                        print("\nConfiguration finished! (time elapsed: {:.3f}s)".format(conf_time))
                         print("All files stored in output/" + subfolder_name + " succesfully.\n")
 
 

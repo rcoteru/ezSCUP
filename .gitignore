@@ -21,3 +21,6 @@
 /examples/*/output/
 /examples/*/csv/
 /examples/*/plots/
+
+# Stuff from tests
+tests/*/*output/

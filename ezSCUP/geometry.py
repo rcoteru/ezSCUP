@@ -351,21 +351,19 @@ class Geometry():
                 raise ezSCUP.exceptions.RestartNotMatching()
 
             # add strain contributions
-            strains += np.array(list(map(float, f.readline().split())))/npartials
+            self.strains += np.array(list(map(float, f.readline().split())))/npartials
 
             # add displacements contribution
             for _ in range(self.ncells): # read all unit cells
 
                 sc_pos = []     # current cell in the supercell
-                atom_disp = {}  # current cell's atomic displacements
 
                 for j in range(self.nats): # read all atoms
 
                     line = f.readline().split()
                     sc_pos = list(map(int, line[0:3]))
-                    atom_disp[self.elements[j]] = np.array(list(map(float, line[5:])))
-
-                self.cells[sc_pos[0], sc_pos[1], sc_pos[2]].displacements += atom_disp/npartials
+            
+                    self.cells[sc_pos[0], sc_pos[1], sc_pos[2]].displacements[self.elements[j]] += np.array(list(map(float, line[5:])))/npartials
     
             f.close()
 

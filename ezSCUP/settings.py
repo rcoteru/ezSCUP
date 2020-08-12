@@ -13,8 +13,8 @@ __status__ = "v2.0"
 # Location of the Scale-Up executable in the system
 # This setting is required to run any simulations.
 # default: None
-SCUP_EXEC = "/home/raul/Software/scale-up-1.0.0/build_dir/src/scaleup.x"
-#SCUP_EXEC = None
+#SCUP_EXEC = "/home/raul/Software/scale-up-1.0.0/build_dir/src/scaleup.x"
+SCUP_EXEC = None
 
 # Whether or not to overwrite old output when starting a 
 # new simulation run. 
@@ -36,7 +36,7 @@ LT_SEARCH_WORD = "LT:"
 
 # whether to print individual configuration settings, mainly 
 # for debugging purposes
-PRINT_CONF_SETTINGS = True
+PRINT_CONF_SETTINGS = False
 
 #####################################################################
 ##  FDF SETTINGS
