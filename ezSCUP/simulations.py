@@ -9,7 +9,7 @@ automates the process of dealing with the output data.
 
 __author__ = "Raúl Coterillo"
 __email__  = "raulcote98@gmail.com"
-__status__ = "Development"
+__status__ = "v2.0"
 
 # third party imports
 import numpy as np          # matrix support
@@ -31,13 +31,26 @@ from ezSCUP.handlers import SCUPHandler
 import ezSCUP.settings as cfg
 import ezSCUP.exceptions
 
-#####################################################################
-## MODULE STRUCTURE
-#####################################################################
-
-# class MCSimulation()
-# class MCConfiguration()
-# class MCSimulationParser()
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# MODULE STRUCTURE
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+#
+# + class MCSimulation():
+#   - __init__()
+#   - setup()
+#   - change_output_folder()
+#   - independent_launch()
+#
+# + class MCConfiguration():
+#   - auto_load()
+#   - load_unique()
+#   - lattice_output()
+#
+# + class MCSimulationParser() 
+#   - __init__()
+#   - access()
+#
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 #####################################################################
 ## SIMULATIONS (COMPLETE FOLDER)
@@ -118,52 +131,20 @@ class MCSimulation:
      - strain (array): strain vectors (% change) 
      - field (array): electric field vectors (V/m)
 
-     - OVERWRITE (boolean): whether to overwrite latest output
-        DEFAULT: False.
 
     """
-    
-    #######################################################
 
-    def __init__(self, supercell, elements, nats, OVERWRITE=False):
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-        """
-        MCSimulation class constructor. 
-        
-        Requires supercell information in order to generate
-        the .restart files required to set strains.  
-
-        Parameters:
-        ----------
-
-        - supercell  (3x1 array): supercell size
-        - elements (list): element labels, 
-            ie: SrTiO3 -> elements = ["Sr", "Ti", "O"]
-        - nats (int): number of atoms inside a unit cell, 
-            ie: SrTi03 -> nats = 5
-        - OVERWRITE (boolean): whether or not overwrite
-            existing output folder, defaults to False.
-            
-        """
-
-        self.supercell = supercell
-        self.elements = elements
-        self.nats = nats
-
-        self.OVERWRITE = OVERWRITE
-
-    #######################################################
-
-
-    def launch(self, fdf, temp, stress=None, strain=None, field=None):
+    def setup(
+        self, fdf, temp, stress=None, strain=None, field=None, 
+        supercell = None, species=None, nats=None,
+        output_folder="output" 
+        ):
 
         """
         
-        Start a simulation run with all the possible combinations 
-        of the given parameters. 
-
-        For more information on variable definition, 
-        see the class docstring.
+        Sets up everything
 
         Parameters:
         ----------
@@ -198,71 +179,93 @@ class MCSimulation:
 
             raise ezSCUP.exceptions.NoSCUPExecutableDetected
 
-        #  the main fdf file
-        self.fdf = fdf
+        self.fdf = fdf # load the main fdf file
+        self.sim = SCUPHandler(scup_exec=cfg.SCUP_EXEC)
+        self.sim.load(self.fdf)
 
-        # temperature vector, required
-        self.temp = np.array(temp)
+        self.supercell = supercell
+        self.species = species
+        self.nats = nats
 
-        # stress vector, optional
-        if stress == None:
+        self.output_folder = output_folder # current output folder
+
+        self.temp = np.array(temp) # temperature vector, required
+        
+        if stress == None: # stress vector, optional
             self.stress = [np.zeros(6)]
         else:
             self.stress = [np.array(p, dtype=np.float64) for p in stress]
 
-        # strain vector list, optional
-        if strain == None:
+        if strain == None: # strain vector list, optional
             self.strain = [np.zeros(6)]
         else:
             self.strain = [np.array(s, dtype=np.float64) for s in strain]
         
-        # electric field vector list, optional
-        if field == None:
+        if field == None: # electric field vector list, optional
             self.field = [np.zeros(3)]
         else:
             self.field = [np.array(f, dtype=np.float64) for f in field]
 
         # get the current path
-        current_path = os.getcwd()
+        self.current_path = os.getcwd()
 
         # create output directory
         try:
-            main_output_folder = os.path.join(current_path, "output")
-            os.makedirs(main_output_folder)
+            self.main_output_folder = os.path.join(self.current_path, self.output_folder)
+            os.makedirs(self.main_output_folder)
         except FileExistsError: # check whether directory already exists
-            if self.OVERWRITE:
+            if cfg.OVERWRITE:
                 print("""
-                Found existing output folder,
+                Found already existing output 
+                folder named "{}",
                 all its contents are now lost.
                 Reason: OVERWRITE set to True.
-                """)
-                rmtree(main_output_folder)
+                """.format(self.output_folder))
+                rmtree(self.main_output_folder)
                 print("")
                 pass
             else:
                 print("""
-                Found existing output folder,
+                Found already existing output 
+                folder named "{}",
                 skipping simulation process.
                 Reason: OVERWRITE set to False.
-                """)
-                return 0 # exits simulation process
+                """.format(self.output_folder))
+                raise ezSCUP.exceptions.PreviouslyUsedOutputFolder()
 
-        # load main fdf file
-        sim = SCUPHandler(scup_exec=cfg.SCUP_EXEC)
-        sim.load(self.fdf)
+        # adjust the supercell as needed
+        if self.supercell != None:
+            self.sim.settings["supercell"] = [list(self.supercell)]
+        else:
+            self.supercell = self.sim.settings["supercell"]
 
-        # adjust the supercell
-        sim.settings["supercell"] = [list(self.supercell)]
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+        # modify FDF settings according to ezSCUP.settings
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+        if cfg.MC_STEPS != None: # number of total MC steps
+            self.sim.settings["mc_nsweeps"].value = int(cfg.MC_STEPS)
+            self.mc_steps = int(cfg.MC_STEPS)
+        else:
+            self.mc_steps = self.sim.settings["mc_nsweeps"].value
 
-        # modify FDF according to ezSCUP.settings
-        if cfg.MC_STEPS != None:
-            sim.settings["mc_nsweeps"].value = int(cfg.MC_STEPS)
-        if cfg.MC_STEP_INTERVAL != None:
-            sim.settings["n_write_mc"].value = int(cfg.MC_STEP_INTERVAL)
-        if cfg.MC_MAX_JUMP != None:
-            sim.settings["mc_max_step_d"].value = float(cfg.MC_MAX_JUMP)
+        if cfg.MC_STEP_INTERVAL != None: # interval between partials
+            self.sim.settings["n_write_mc"].value = int(cfg.MC_STEP_INTERVAL)
+            self.mc_step_interval = int(cfg.MC_STEP_INTERVAL)
+        else:
+            self.mc_step_interval = self.sim.settings["n_write_mc"].value
+
+        if cfg.MC_MAX_JUMP != None: # max jump distance 
+            self.sim.settings["mc_max_step_d"].value = float(cfg.MC_MAX_JUMP)
+            self.mc_max_jump = float(cfg.MC_MAX_JUMP)
+        else:
+            self.mc_max_jump = self.sim.settings["mc_max_step_d"].value
+
         if cfg.LATTICE_OUTPUT_INTERVAL != None:
-            sim.settings["print_std_lattice_nsteps"].value = int(cfg.LATTICE_OUTPUT_INTERVAL)
+            self.sim.settings["print_std_lattice_nsteps"].value = int(cfg.LATTICE_OUTPUT_INTERVAL)
+            self.lat_output_interval = int(cfg.LATTICE_OUTPUT_INTERVAL)
+        else:
+            self.lat_output_interval = self.sim.settings["print_std_lattice_nsteps"].value
+        
         if cfg.FIXED_STRAIN_COMPONENTS != None:
             if len(cfg.FIXED_STRAIN_COMPONENTS) != 6:
                 raise ezSCUP.exceptions.InvalidFDFSetting
@@ -275,48 +278,157 @@ class MCSimulation:
                 else:
                     setting.append("F")
             print(setting)
-            sim.settings["fix_strain_component"] = [setting]
+            self.sim.settings["fix_strain_component"] = [setting]
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-        # check is strains are needed and creates generator
+        # strains setup (require a restart file generator)
         if strain != None:
-            sim.settings["geometry_restart"] = FDFSetting("temp.restart")
-            gen = RestartGenerator(self.supercell, self.elements, self.nats)
+
+            if supercell == None or nats == None or species == None:
+                raise ezSCUP.exceptions.MissingRequiredArguments(
+                """
+                In order to simulate strains you must also provide
+                the supercell, species and number of atoms, as the
+                creation of .restart files is needed.
+                """
+                )
+
+            self.sim.settings["geometry_restart"] = FDFSetting("temporary.restart")
+            self.generator = RestartGenerator(self.supercell, self.species, self.nats)
 
         # print common simulation settings
-        print("\nCommon simulation settings:")
-        sim.print_all()
+        print("\nCurrent FDF settings:")
+        self.sim.print_all()
         print("")
 
         # load simulation name
-        self.name = sim.settings["system_name"].value
+        self.name = self.sim.settings["system_name"].value
+        
+        # save simulation setup file 
+        print("\nSaving simulation setup file... ")
+
+        setup = {
+            "name": self.name,
+            "supercell": self.supercell,
+            "species": self.species,
+            "nats": self.nats,
+            "temp": self.temp,
+            "strain": self.strain,
+            "stress": self.stress,
+            "field": self.field,
+
+            "mc_steps": self.mc_steps,
+            "mc_step_interval": self.mc_step_interval,
+            "mc_max_jump": self.mc_max_jump,
+            "lat_output_interval": self.lat_output_interval,
+
+            "fixed_strain_components": cfg.FIXED_STRAIN_COMPONENTS,
+            }
+
+        simulation_setup_file = os.path.join(self.main_output_folder, cfg.SIMULATION_SETUP_FILE)
+
+        with open(simulation_setup_file, "wb") as f:
+            pickle.dump(setup, f)
+
+        print("\n Simulation run has been properly configured.")
+        print("You may now proceed to launch it.\n")
+
+        self.SETUP = True # simulation run properly setup
+
+        pass
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def change_output_folder(self, output_folder):
+
+        # get the current path
+        self.current_path = os.getcwd()
+
+        previous = self.output_folder
+
+        # create output directory
+        print("Creating output folder...")
+        try:
+            main_output_folder = os.path.join(self.current_path, output_folder)
+            os.makedirs(main_output_folder)
+            self.output_folder = output_folder
+            self.main_output_folder = main_output_folder
+
+        except FileExistsError: # check whether directory already exists
+            if cfg.OVERWRITE:
+                print("""
+                Found already existing output 
+                folder named "{}",
+                all its contents are now lost.
+                Reason: OVERWRITE set to True.
+                """.format(self.output_folder))
+                rmtree(self.main_output_folder)
+                print("")
+                pass
+            else:
+                print("""
+                Found already existing output 
+                folder named "{}", aborting folder swap.
+                Reason: OVERWRITE set to False.
+                """.format(self.output_folder))
+                raise ezSCUP.exceptions.PreviouslyUsedOutputFolder()
+
+        # save simulation setup file 
+        print("\nSaving simulation setup file... ")
+
+        setup = {
+            "name": self.name,
+            "supercell": self.supercell,
+            "species": self.species,
+            "nats": self.nats,
+            "temp": self.temp,
+            "strain": self.strain,
+            "stress": self.stress,
+            "field": self.field,
+
+            "mc_steps": self.mc_steps,
+            "mc_step_interval": self.mc_step_interval,
+            "mc_max_jump": self.mc_max_jump,
+            "lat_output_interval": self.lat_output_interval,
+
+            "fixed_strain_components": cfg.FIXED_STRAIN_COMPONENTS,
+            }
+
+        simulation_setup_file = os.path.join(self.main_output_folder, cfg.SIMULATION_SETUP_FILE)
+
+        with open(simulation_setup_file, "wb") as f:
+            pickle.dump(setup, f)
+
+        print('\n Output folder swap from "{}" to "{}" complete!\n'.format(previous, self.output_folder))
+
+        pass
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def independent_launch(self, start_geo = None):
+
+        """
+        
+        Start a simulation run with all the possible combinations 
+        of the given parameters. 
+
+        Parameters:
+        ----------
+
+        - fdf  (string): common fdf base file for all simulations.
+
+        - temp (list): list of temperatures, required.
+        - stress (list): list of stress vectors, if needed.
+        - strain (list): list of strain vectors, if needed.
+        - field (list): list of field vectors, if needed.
+
+        """
         
         # simulation counters
         total_counter   =  0
 
         # total number of simulations 
         nsims = self.temp.size*len(self.strain)*len(self.field)*len(self.stress)
-
-        # save simulation setup file 
-        print("Saving simulation setup file... ")
-
-        setup = {
-            "name": self.name,
-            "supercell": self.supercell,
-            "elements": self.elements,
-            "nats": self.nats,
-            "temp": self.temp,
-            "strain": self.strain,
-            "stress": self.stress,
-            "field": self.field
-            }
-
-        simulation_setup_file = os.path.join(main_output_folder, cfg.SIMULATION_SETUP_FILE)
-
-        with open(simulation_setup_file, "wb") as f:
-            pickle.dump(setup, f)
-
-        print("")
-
         
         # starting time of the simulation process
         main_start_time = time.time()
@@ -347,7 +459,7 @@ class MCSimulation:
 
                         # file base name
                         sim_name = self.name + "T{:d}".format(int(t))
-                        sim.settings["system_name"].value = sim_name
+                        self.sim.settings["system_name"].value = sim_name
 
                         # configuration name
                         conf_name = "c{:02d}{:02d}{:02d}{:02d}".format(temp_counter,
@@ -357,35 +469,35 @@ class MCSimulation:
                         subfolder_name = self.name + "." + conf_name
 
                         # modify target temperature
-                        sim.settings["mc_temperature"].value = t
+                        self.sim.settings["mc_temperature"].value = t
 
                         # modify target stress, if needed
-                        if stress != None: 
-                            sim.settings["external_stress"] = [p]
+                        if self.stress != None: 
+                            self.sim.settings["external_stress"] = [p]
 
                         # set target strain, if needed
-                        if strain != None:
-                            gen.strains = s
-                            gen.write("temp.restart")
+                        if self.strain != None:
+                            self.generator.strains = s
+                            self.generator.write("temporary.restart")
 
                         # modify target field, if needed
-                        if field != None: 
-                            sim.settings["static_electric_field"] = [f]
+                        if self.field != None: 
+                            self.sim.settings["static_electric_field"] = [f]
 
                         # define human output filename
                         output = sim_name + ".out"
 
                         # simulate the current configuration
-                        sim.launch(output_file=output)
+                        self.sim.launch(output_file=output)
 
                         # move all the output to its corresponding folder
-                        output_folder = os.path.join(main_output_folder, subfolder_name)
-                        os.makedirs(output_folder)
+                        configuration_folder = os.path.join(self.main_output_folder, subfolder_name)
+                        os.makedirs(configuration_folder)
 
-                        files = os.listdir(current_path)
+                        files = os.listdir(self.current_path)
                         for f in files:
                             if sim_name in f:
-                                move(f, output_folder)
+                                move(f, configuration_folder)
                         
                         # finish time of the current conf
                         conf_finish_time = time.time()
@@ -397,8 +509,8 @@ class MCSimulation:
 
 
         # cleanup
-        if strain != None:
-            os.remove("temp.restart")
+        if self.strain != None:
+            os.remove("temporary.restart")
 
         main_finished_time = time.time()
         main_time = main_finished_time - main_start_time
@@ -406,11 +518,9 @@ class MCSimulation:
         print("Simulation process complete!")
         print("Total simulation time: {:.3f}s".format(main_time))
 
-    #######################################################
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-#####################################################################
-## MONTE CARLO CONFIGURATION (FOLDER-WISE MANAGEMENT)
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 class MCConfiguration:
 
@@ -575,6 +685,8 @@ class MCConfiguration:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def lattice_output(self):
+
+        #TODO REMAKE THIS
         
         """
 
@@ -596,10 +708,7 @@ class MCConfiguration:
         return ldata
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-#####################################################################
-## SIMULATION PARSER (WHOLE OUTPUT FOLDER MANAGEMENT)
-#####################################################################        
+   
 
 class MCSimulationParser:
 
@@ -634,7 +743,7 @@ class MCSimulationParser:
      - strain (array): strain vectors (% change) 
      - field (array): electric field vectors (V/m)
 
-     - parser (MCConfiguration): last configuration accessed
+     - parser (MCConfiguration): last accessed configuration
 
     """
 
@@ -644,48 +753,51 @@ class MCSimulationParser:
 
     parser = MCConfiguration()
 
-    #######################################################
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    def __init__(self):
+    def __init__(self, output_folder="output"):
 
         # check if there's an output folder
         if os.path.exists(os.path.join(os.getcwd(), "output")):
-            self.index() # loads the simulation.info from the output folder
+            
+            # first, load the simulation.info file from the output folder
+            
+            # get the current path
+            self.current_path = os.getcwd()
+
+            # main output folder
+            self.main_output_folder = os.path.join(self.current_path, output_folder)
+
+            # simulation setup file 
+            self.simulation_setup_file = os.path.join(self.main_output_folder, cfg.SIMULATION_SETUP_FILE)
+
+            # load simulation setup file 
+            with open(self.simulation_setup_file, "rb") as f:
+                setup = pickle.load(f) 
+
+            # load run information
+            self.name      = setup["name"] 
+            self.supercell = setup["supercell"]
+            self.elements  = setup["elements"]
+            self.nats      = setup["nats"]
+
+            # load simulation parameters
+            self.temp   = setup["temp"] 
+            self.stress = setup["stress"] 
+            self.strain = setup["strain"] 
+            self.field  = setup["field"]   
+
         else:
-            raise ezSCUP.exceptions.OutputFolderDoesNotExist
+            print('Cannot find output folder "{}", exiting.'.format(output_folder))
+            raise ezSCUP.exceptions.OutputFolderDoesNotExist   
 
-    def index(self):
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-        """
-        Loads the simualtion run's parameters from the "simulation.info" file.
-        """
-
-        # get the current path
-        current_path = os.getcwd()
-
-        # main output folder
-        main_output_folder = os.path.join(current_path, "output")
-
-        # simulation setup file 
-        simulation_setup_file = os.path.join(main_output_folder, cfg.SIMULATION_SETUP_FILE)
-
-        # load simulation setup file 
-        with open(simulation_setup_file, "rb") as f:
-            setup = pickle.load(f) 
-
-        # load run information
-        self.name      = setup["name"] 
-        self.supercell = setup["supercell"]
-        self.elements  = setup["elements"]
-        self.nats      = setup["nats"]
-
-        # load simulation parameters
-        self.temp   = setup["temp"] 
-        self.stress = setup["stress"] 
-        self.strain = setup["strain"] 
-        self.field  = setup["field"] 
-
-    #######################################################
+    def print_simulation_setup(self):
+        
+        # TODO
+        
+        pass
 
     def access(self, t, p=None, s=None, f=None):
 
@@ -748,5 +860,5 @@ class MCSimulationParser:
         
         return self.parser
 
-    #######################################################
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         

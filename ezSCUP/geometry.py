@@ -4,7 +4,7 @@ Collection of auxiliary data structures.
 
 __author__ = "Raúl Coterillo"
 __email__  = "raulcote98@gmail.com"
-__status__ = "Development"
+__status__ = "v2.0"
 
 # third party imports
 import numpy as np

@@ -4,7 +4,7 @@ Collection of classes to generate various ScaleUp files.
 
 __author__ = "Raúl Coterillo"
 __email__  = "raulcote98@gmail.com"
-__status__ = "Development"
+__status__ = "v2.0"
 
 # third party imports
 import numpy as np          # matrix support
@@ -17,17 +17,18 @@ from copy import deepcopy   # proper array copy
 
 # package imports
 import ezSCUP.settings as cfg
-from ezSCUP.structures import Cell
+from ezSCUP.geometry import UnitCell
 
-#####################################################################
-## MODULE STRUCTURE
-#####################################################################
-
-# class RestartGenerator()
-
-#####################################################################
-## RESTART FILE GENERATOR
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# MODULE STRUCTURE
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+#
+# + RestartGenerator()
+#   - __init__()
+#   - write()
+#   - print_all() 
+#
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 class RestartGenerator:
 
@@ -37,19 +38,19 @@ class RestartGenerator:
     ncells = 0          # number of cells
     nats = 0            # number of atoms per cell
     nels = 0            # number of distinct atomic elements
-    elements = []       # elements in the lattice, in order
+    species = []       # atomic species in the lattice, in order
     strains = []        # strains, in Voigt notation (percent variation)
     cells = []          # loaded cell data
 
-    #######################################################
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    def __init__(self, supercell, elements, nats):
+    def __init__(self, supercell, species, nats):
 
         self.supercell = np.array(supercell)
         self.ncells = int(self.supercell[0]*self.supercell[1]*self.supercell[2])
-        self.elements = elements.copy()
-        self.species = elements.copy()
-        self.nels = len(elements)
+        self.elements = species.copy()
+        self.species = species.copy()
+        self.nels = len(species)
         self.nats = nats
         self.strains = np.zeros(6)
 
@@ -60,7 +61,7 @@ class RestartGenerator:
             self.elements[self.nels-1] = self.elements[self.nels-1]+str(1)
 
         atom_displacement = {}             # empty atomic displacements
-        for j in range(self.nats):         # iter over all atoms
+        for j in range(self.nats):         # iterate over all atoms
             atom_displacement[self.elements[j]] = np.zeros(3)
 
         self.cells = np.zeros(list(self.supercell), dtype="object")
@@ -68,9 +69,9 @@ class RestartGenerator:
         for x in range(self.supercell[0]):
             for y in range(self.supercell[1]):
                 for z in range(self.supercell[2]):
-                    self.cells[x,y,z] = Cell([x, y, z], self.elements, displacements=deepcopy(atom_displacement))
+                    self.cells[x,y,z] = UnitCell([x, y, z], self.elements, displacements=deepcopy(atom_displacement))
                     
-    #######################################################
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         
     def write(self, fname):
 
@@ -111,7 +112,7 @@ class RestartGenerator:
         
         f.close()
 
-    #######################################################
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def print_all(self):
 
@@ -131,9 +132,6 @@ class RestartGenerator:
             self.cells[c].print_atom_disp()
             print("")
 
-    #######################################################
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-#####################################################################
-## SIMULATION.INFO FILE GENERATOR
-#####################################################################
 

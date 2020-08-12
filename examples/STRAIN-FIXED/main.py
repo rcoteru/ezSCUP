@@ -8,7 +8,7 @@ temperatures spanning between 20 K and 300 K, in 8x8x8 supercells.
 
 __author__ = "Raúl Coterillo"
 __email__  = "raulcote98@gmail.com"
-__status__ = "Development"
+__status__ = "v2.0"
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~ REQUIRED MODULE IMPORTS ~~~~~~~~~~~~~~~~~~~~~~ #
@@ -35,7 +35,7 @@ import ezSCUP.settings as cfg
 # IMPORTANT: location of the Scale-Up executable in the system
 cfg.SCUP_EXEC = "/home/raul/Software/scale-up/build_dir/src/scaleup.x"
 
-OVERWRITE = False                           # overwrite old output folder?
+cfg.OVERWRITE = False                       # overwrite old output folder?
 
 # ~~~~~~~~~~~~~~~~~~~~~ SIMULATION SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
