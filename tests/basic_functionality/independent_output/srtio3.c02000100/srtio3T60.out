@@ -1,0 +1,212 @@
+
+*****************************************************************
+*                          Welcome to                           *
+*                           SCALE-UP                            *
+*                                                               *
+*            Second-Principles Computational Approach           *
+*                             for                               *
+*                     Lattice and Electrons                     *
+*                                                               *
+*                       Version:         1.0.0.Gorbea           *
+*                    Build date: 20200801T181                   *
+*****************************************************************
+*                    SCALE-UP is property of                    *
+*              the University of Cantabria (Spain)              *
+*    and the Luxembourg Institute of Science and Technology     *
+*****************************************************************
+* Authors:                                                      *
+*                                                               *
+*  - Pablo Garcia-Fernandez   garciapa@unican.es                *
+*  - Jorge Iñiguez            jorge.iniguez@list.lu             *
+*  - Javier Junquera          junqueraj@unican.es               *
+*****************************************************************
+* SCALE-UP is based on two earlier programs:                    *
+*                                                               *
+* -  SPLD ('Second-Principles Lattice Dynamics'), developed     *
+*    at the ICMAB-CSIC (Spain) by J.C. Wojdel, M.P. Ljungberg   *
+*    and J. Iñiguez, and distributed under MIT license.         *
+*                                                               *
+* -  MKII a second-principles electron code                     *
+*    developed at the University of Cantabria by                *
+*    P. Garcia-Fernandez  and J. Junquera.                      *
+*****************************************************************
+*                                                               *
+* Bibliography:                                                 *
+*                                                               *
+*  P. Garcia-Fernandez et al. Phys. Rev. B 93, 195137 (2016)    *
+*  J. C. Wojdel et al., J. Phys. Cond. Matt. 25, 305401 (2013)  *
+*****************************************************************
+Reading parameter file... lattice... done!
+Reading restart file     srtio3T60.restart                                                               
+
+Basic data:
+  Number of CPUs:               1
+  Run mode:            Montecarlo
+  Lattice:                 Active
+  Electrons:           NOT Active
+  External electric field, static. Field components (V/m):   0.000000E+00   0.000000E+00   0.000000E+00
+
+Reference system:
+ Supercell data:
+  Lattice constants (Ang):   7.690   7.690   7.690
+  Lattice angles (degree):  90.000  90.000  90.000
+ Supercell size:   2   2   2
+
+ Total number of atoms          :      40
+ Total number of orbitals       :       0
+ Total number of active orbitals:       0
+
+ Atom in unit cell:
+ Atom   Label       Mass  Charge 
+    1   Sr         87.60     0.0
+    2   Ti         47.90     0.0
+    3   O          16.00     0.0
+    4   O          16.00     0.0
+    5   O          16.00     0.0
+
+ Orbitals in unit cell:
+ Orbital   Label  
+
+ Background dielectric tensor:
+    6.2319     0.0000     0.0000
+    0.0000     6.2319    -0.0000
+    0.0000    -0.0000     6.2319
+
+Initial values (basic output MC simulation)
+Energy (eV):            -0.298486E+05
+Polarization (C/m2):     0.000000    0.000000    0.000000
+Strain:                  0.000000    0.000000    0.000000    0.000000    0.000000    0.000000
+
+LT:    Iter       Temp(K)    Energy(eV)   Pol_x(C/m2)   Pol_y(C/m2)   Pol_z(C/m2) Av_Pl_x(C/m2) Av_Pl_y(C/m2) Av_Pl_z(C/m2)       Strn_xx       Strn_yy       Strn_zz       Strn_yz       Strn_xz       Strn_xy    Av_Strn_xx    Av_Strn_yy    Av_Strn_zz    Av_Strn_yz    Av_Strn_xz    Av_Strn_xy 
+LT:      10  0.600000E+02 -0.298484E+05 -0.185831E-01  0.463478E-02  0.609950E-02 -0.146982E-01 -0.519828E-02 -0.203648E-02  0.000000E+00  0.000000E+00 -0.488721E-03 -0.742166E-04 -0.182345E-02  0.000000E+00  0.000000E+00  0.000000E+00  0.140178E-04 -0.147345E-02 -0.396753E-03  0.000000E+00 
+LT:      20  0.600000E+02 -0.298482E+05  0.801223E-02  0.295914E-01 -0.936197E-02  0.228398E-02  0.209568E-01 -0.665395E-02  0.000000E+00  0.000000E+00  0.142757E-02 -0.218444E-02 -0.380163E-02  0.000000E+00  0.000000E+00  0.000000E+00  0.357719E-04 -0.137328E-02 -0.171542E-02  0.000000E+00 
+LT:      30  0.600000E+02 -0.298483E+05 -0.399361E-01 -0.314213E-01 -0.291879E-01 -0.971595E-03  0.168245E-01 -0.115177E-01  0.000000E+00  0.000000E+00  0.113007E-03 -0.753889E-03 -0.222023E-02  0.000000E+00  0.000000E+00  0.000000E+00 -0.126395E-03 -0.166151E-02 -0.173349E-02  0.000000E+00 
+LT:      40  0.600000E+02 -0.298484E+05 -0.148397E-01 -0.418511E-01 -0.574168E-01 -0.886540E-02  0.445434E-02 -0.264734E-01  0.000000E+00  0.000000E+00  0.314905E-03  0.373519E-02  0.566864E-03  0.000000E+00  0.000000E+00  0.000000E+00 -0.161445E-03 -0.770174E-03 -0.156086E-02  0.000000E+00 
+LT:      50  0.600000E+02 -0.298483E+05  0.806605E-02 -0.252977E-05  0.554846E-02 -0.109146E-01  0.683701E-03 -0.247721E-01  0.000000E+00  0.000000E+00  0.183416E-02 -0.253851E-02 -0.251982E-02  0.000000E+00  0.000000E+00  0.000000E+00  0.720257E-04 -0.696228E-03 -0.107473E-02  0.000000E+00 
+LT:      60  0.600000E+02 -0.298483E+05 -0.149992E-03 -0.331685E-01  0.149309E-01 -0.584259E-02  0.315699E-03 -0.181377E-01  0.000000E+00  0.000000E+00  0.340425E-02  0.178581E-02 -0.333822E-02  0.000000E+00  0.000000E+00  0.000000E+00  0.440402E-03 -0.494075E-03 -0.139793E-02  0.000000E+00 
+LT:      70  0.600000E+02 -0.298484E+05  0.467913E-01  0.263366E-02  0.191749E-01 -0.170172E-02  0.115071E-02 -0.165310E-01  0.000000E+00  0.000000E+00  0.133443E-02  0.612820E-03  0.228177E-02  0.000000E+00  0.000000E+00  0.000000E+00  0.610465E-03 -0.144443E-03 -0.129043E-02  0.000000E+00 
+LT:      80  0.600000E+02 -0.298484E+05  0.458607E-01  0.873414E-02  0.397404E-01  0.412679E-02 -0.149000E-02 -0.136027E-01  0.000000E+00  0.000000E+00  0.118033E-02  0.367214E-03  0.172052E-04  0.000000E+00  0.000000E+00  0.000000E+00  0.728135E-03  0.385481E-04 -0.854148E-03  0.000000E+00 
+LT:      90  0.600000E+02 -0.298485E+05 -0.186122E-01 -0.110774E-01  0.184244E-01  0.489438E-02 -0.115175E-02 -0.744098E-02  0.000000E+00  0.000000E+00 -0.589660E-03  0.389921E-02 -0.322493E-02  0.000000E+00  0.000000E+00  0.000000E+00  0.742658E-03  0.212074E-03 -0.107935E-02  0.000000E+00 
+LT:     100  0.600000E+02 -0.298485E+05 -0.657918E-03  0.166122E-01 -0.296383E-01  0.638495E-02 -0.373588E-02 -0.850328E-02  0.000000E+00  0.000000E+00 -0.353854E-02  0.294998E-02 -0.195563E-02  0.000000E+00  0.000000E+00  0.000000E+00  0.624772E-03  0.398525E-03 -0.110832E-02  0.000000E+00 
+
+Final values (basic output MC simulation)
+Energy (eV):            -0.298485E+05
+Polarization (C/m2):    -0.000658    0.016612   -0.029638
+Strain:                  0.000000    0.000000   -0.003539    0.002950   -0.001956    0.000000
+
+-----------------------------------------------------------------
+ Backing up the input read by fdf:
+
+System_name     srtio3T60
+Print_routineinfo         5     # default value
+Print_routinedepth         0     # default value
+Print_inout         0     # default value
+Print_interactions         0     # default value
+Print_k-vectors         0     # default value
+Print_energies         1     # default value
+Print_wavefunctions        -1     # default value
+Print_electrostatic         1     # default value
+Print_orbocc         1     # default value
+Print_bands        -1     # default value
+Print_forces        -1     # default value
+Print_detail        -1     # default value
+Print_Just_Geometry        -1     # default value
+Print_Velocity         0     # default value
+Print_Space_Hamiltonian        -1     # default value
+Print_space_denmat        -1     # default value
+Print_Geometry         1     # default value
+Print_geoformat     normal     # default value
+Print_test_file        -1     # default value
+Print_local_lattice_energy        -1     # default value
+Print_local_current        -1     # default value
+Print_std_electron_nsteps         1     # default value
+Print_std_lattice_nsteps             10
+Print_std_energy              T
+Print_std_polarization              T
+Print_std_current              F     # default value
+Print_std_strain              T
+Print_std_av_polarization              T
+Print_std_av_strain              T
+Print_std_av_energy              F     # default value
+Print_std_delta_energy              F     # default value
+Print_std_temperature              T     # default value
+Print_std_maximum_force              F     # default value
+Print_std_maximum_stress              F     # default value
+Print_std_mdd              T     # default value
+Print_std_fermi              T     # default value
+Print_std_pulay              T     # default value
+Print_std_neh              T     # default value
+Print_std_el_pol              T     # default value
+Print_std_micro              F     # default value
+run_mode     monte_carlo
+Print_std_mdd              F     # default value
+Print_std_fermi              F     # default value
+Print_std_pulay              F     # default value
+Print_std_neh              F     # default value
+Print_std_electron_nsteps     10000     # default value
+No_electron
+%block fix_strain_component
+ T T F F F T
+T                                                                                             T
+T                                                                                             T
+F                                                                                             F
+F                                                                                             F
+F                                                                                             F
+T                                                                                             T
+Parameter_file     srtio3_full_lat.xml
+%block Supercell
+ 2 2 2
+%endblock Supercell
+electric_field_scale          1.000000000     v/m     # default value
+%block static_electric_field
+ 0.0 0.0 0.0
+temperature         0.1000000000E-98 kelvin     # default value
+%block external_stress
+ 0.0 0.0 0.0 0.0 0.0 0.0
+Charge_tolerance         0.1000000000E-07     # default value
+Geometry_restart
+Geometry_restart     srtio3T60.restart
+MC_nsweeps
+MC_nsweeps            100
+MC_temperature
+MC_temperature          60.00000000         kelvin
+# above item originally: MC_temperature          60.00000000     kelvin
+MC_annealing_rate          1.000000000
+MC_init_step_d         0.9448629925E-01 bohr     # default value
+MC_init_step_s         0.1889725985E-02 bohr     # default value
+MC_max_step_d         0.9448634389           bohr
+# above item originally: MC_max_step_d         0.5000000000     ang
+MC_min_step_d         0.1889725985E-05 bohr     # default value
+MC_target_acc_d         0.5000000000         # default value
+MC_target_acc_s         0.5000000000         # default value
+MC_strains              T
+n_write_mc
+n_write_mc             10
+Print_std_lattice_nsteps
+*****************************************************************
+ Memory usage:
+  Function             Total_memory(Mb)  Max_memory(Mb)      Node
+  setup_main                     0.0256          0.0256         0
+  setup_basicvariables           0.0056          0.0056         0
+  setup_latt_hamil               0.0014          0.0014         0
+  setup_init_data_node           0.0256          0.0256         0
+  hel_setup_structfactors        0.0256          0.0256         0
+  hlt_create_supercell           0.0014          0.0014         0
+
+ Timing statistics (seconds)
+  Function                       Wall   Max_Wall    Max_CPU  Node
+  setup_main                     3.71       3.71       3.71     0
+  setup_readinput                3.50       3.50       3.49     0
+  montecarlo_main                0.21       0.21       0.21     0
+  montecarlo_sweep               0.20       0.20       0.20     0
+  io_readparameterfile           3.49       3.49       3.49     0
+  setup_latt_hamil               0.22       0.22       0.22     0
+  hlt_add_harmonic_didi          0.22       0.22       0.22     0
+
+ Total memory usage:     0.03 MB
+ Total WALL:           3.925 seconds
+*****************************************************************
+*                                                               *
+*               Succesfully ending SCALE-UP                     *
+*                                                               *
+*****************************************************************
