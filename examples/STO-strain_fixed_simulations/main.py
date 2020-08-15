@@ -24,8 +24,11 @@ import numpy as np
 
 # ezSCUP imports
 from ezSCUP.simulations import MCSimulation, MCConfiguration, MCSimulationParser
-from ezSCUP.analysis import perovskite_AFD, perovskite_FE_full, perovskite_FE_simple, BornPolarization
+
+from ezSCUP.perovskite import perovskite_AFD, perovskite_FE_full, perovskite_FE_simple, perovskite_simple_rotation
+from ezSCUP.polarization import BornPolarization
 from ezSCUP.files import save_file
+
 import ezSCUP.settings as cfg
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -33,15 +36,17 @@ import ezSCUP.settings as cfg
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 # IMPORTANT: location of the Scale-Up executable in the system
-cfg.SCUP_EXEC = "/home/raul/Software/scale-up/build_dir/src/scaleup.x"
+cfg.SCUP_EXEC = "/home/raul/Software/scale-up-1.0.0/build_dir/src/scaleup.x"
 
 cfg.OVERWRITE = False                       # overwrite old output folder?
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~ SIMULATION SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 SUPERCELL = [8,8,8]                         # shape of the supercell
-ELEMENTS = ["Sr", "Ti", "O"]                # elements in the lattice
+SPECIES = ["Sr", "Ti", "O"]                 # elements in the lattice
+LABELS = ["Sr", "Ti", "O3", "O2", "O1"]     # [A, B, 0x, Oy, Oz]
 NATS = 5                                    # number of atoms per cell
 
 TEMPERATURES = np.linspace(20, 300, 10)     # temperatures to simulate
@@ -51,21 +56,21 @@ STRAINS = [                                 # strains to simulate
     [-0.03, -0.03, 0.0, 0.0, 0.0, 0.0]
 ]   # +-3% and 0% cell strain in the x and y direction (Voigt notation)
 
-cfg.MC_STEPS = 40000                        # MC total steps
-cfg.MC_EQUILIBRATION_STEPS = 5000           # MC equilibration steps
-cfg.MC_STEP_INTERVAL = 50                   # MC steps between partial files
+cfg.MC_STEPS = 5000                         # MC total steps
+cfg.MC_EQUILIBRATION_STEPS = 500            # MC equilibration steps
+cfg.MC_STEP_INTERVAL = 20                   # MC steps between partial files
 cfg.LATTICE_OUTPUT_INTERVAL = 10            # MC steps between output prints  
 # fixed strain components: xx, yy, xy (Voigt notation)
 cfg.FIXED_STRAIN_COMPONENTS = [True, True, False, False, False, True]
 
-cfg.PRINT_CONF_SETTINGS = True              # (DEBUGGING) print individual FDF settings
-
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~ ANALYSIS SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 plot_AFDa = True                          # plot AFDa angles?
 plot_AFDi = True                          # plot AFDi angles?
 FIX_XY_PLANE = True                       # make x rotation always the big one?
+
 plot_strain = True                        # plot strains?
 
 plot_full_FE = True                       # plot B-site full FE?
@@ -79,13 +84,10 @@ plot_domain_polarization = True           # plot polarization with domains?
 show_plots =  True                        # show the created plots?
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-# ~~~~~~~~~~~~~~~~~~~~~~~ code starts here ~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-
-#####################################################################
 #              FUNCTIONS TO OBTAIN THE AFD ROTATIONS                #
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 def read_AFD(temp, s, mode="a", threshold=0.):
 
@@ -147,6 +149,8 @@ def read_AFD(temp, s, mode="a", threshold=0.):
 
     return np.array(rotations), np.array(rotations_err)
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 def display_AFD(temp, strain, mode="a", threshold=0.):
 
@@ -220,9 +224,11 @@ def display_AFD(temp, strain, mode="a", threshold=0.):
     plt.savefig("plots/AFD" + mode + ".png")
     plt.draw()
 
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 #        FUNCTIONS TO OBTAIN THE FERROELECTRIC DISTORTIONS          #
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 def read_simple_FE(temp, s, mode="B"):
 
@@ -265,6 +271,9 @@ def read_simple_FE(temp, s, mode="B"):
         distortions_err.append(dists_err)
 
     return np.array(distortions), np.array(distortions_err)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 def display_simple_FE(temp, strain, mode="B"):
 
@@ -312,8 +321,6 @@ def display_simple_FE(temp, strain, mode="B"):
 
     plt.xlabel("T (K)", fontsize = 14)
     plt.ylabel(r"$\delta_z$ (supercells)", fontsize = 14)
-
-    #plt.ylim(0,8)
     
     plt.legend(frameon = True, fontsize = 14)
     plt.grid(True)
@@ -321,6 +328,8 @@ def display_simple_FE(temp, strain, mode="B"):
     plt.savefig("plots/simpleFE_"+ mode +".png")
     plt.draw()
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 def read_full_FE(temp, s, module=False):
 
@@ -374,6 +383,9 @@ def read_full_FE(temp, s, module=False):
         distortions_err.append(dists_err)
 
     return np.array(distortions), np.array(distortions_err)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 def display_full_FE(temp, strain, module=False):
 
@@ -435,14 +447,15 @@ def display_full_FE(temp, strain, module=False):
     plt.draw()
 
 
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 #                 FUNCTIONS TO OBTAIN THE STRAINS                   #
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 def read_strain(temp, s):
 
     sim = MCSimulationParser()
-    sim.index()
 
     strains = []
     strains_err = []
@@ -467,6 +480,9 @@ def read_strain(temp, s):
 
     return np.array(strains), np.array(strains_err)
 
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 def display_strain(temp, strain):
 
@@ -513,18 +529,18 @@ def display_strain(temp, strain):
     plt.draw()
 
 
-#####################################################################
-#             FUNCTIONS TO OBTAIN THE POLARIZATION                  #
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+#              FUNCTIONS TO OBTAIN THE POLARIZATION                 #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
 def read_polarization(temp, s, module=False):
 
     sim = MCSimulationParser()
     born = BornPolarization()
-    sim.index()
 
-    labels = ["Sr", "Ti", "O3", "O2", "O1"]
     born_charges = {
         "Sr": np.array([2.566657, 2.566657, 2.566657]),
         "Ti": np.array([7.265894, 7.265894, 7.265894]),
@@ -567,6 +583,8 @@ def read_polarization(temp, s, module=False):
 
     return np.array(pols), np.array(pols_err)
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 def display_polarization(temp, strain, module=False):
 
@@ -627,17 +645,21 @@ def display_polarization(temp, strain, module=False):
 
     plt.draw()
 
-#####################################################################
-#                       MAIN FUNCTION CALL                          #
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+#                     MAIN FUNCTION CALL                            #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 if __name__ == "__main__":
 
     # create simulation class
-    sim = MCSimulation(SUPERCELL, ELEMENTS, NATS, OVERWRITE)
+    sim = MCSimulation()
+    sim.setup("input.fdf", SUPERCELL, SPECIES, NATS,
+    temp = TEMPERATURES, strain=STRAINS)
 
     # simulate and properly store output
-    sim.launch("input.fdf", temp=TEMPERATURES, strain=STRAINS)
+    sim.sequential_launch_by_temperature(inverse_order=True)
 
     try: #create the "plots" folder if needed
         os.mkdir("plots")
@@ -718,4 +740,5 @@ if __name__ == "__main__":
 
     print("\nEVERYTHING DONE!")
 
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #

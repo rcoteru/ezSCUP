@@ -25,10 +25,12 @@ import ezSCUP.settings as cfg
 # MODULE STRUCTURE
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 #
-# + RestartGenerator()
+# + class RestartGenerator()
 #   - __init__()
 #   - write()
 #   - print_all() 
+#
+# + class SimulationFileGenerator()
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -160,3 +162,6 @@ class RestartGenerator:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
+class SimulationFileGenerator():
+
+    pass

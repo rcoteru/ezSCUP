@@ -55,27 +55,9 @@ class BornPolarization():
     
     """
 
-    def load(self, config):
-
-        """
-
-        Loads a configuration for its later use.
-        
-        Parameters:
-        ----------
-
-        - config (MCConfiguration): configuration to be loaded.
-        
-        """
-
-        if not isinstance(config, MCConfiguration):
-            raise ezSCUP.exceptions.InvalidMCConfiguration
-
-        self.config = config
-
     #######################################################
 
-    def polarization(self, born_charges):
+    def polarization(self, config, born_charges):
 
         """
 
@@ -93,6 +75,11 @@ class BornPolarization():
             - a 3D vector with the macroscopic polarization (in C/m2)
         
         """
+
+        if not isinstance(config, MCConfiguration):
+            raise ezSCUP.exceptions.InvalidMCConfiguration
+
+        self.config = config
 
         labels = list(born_charges.keys())
     
@@ -130,7 +117,7 @@ class BornPolarization():
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    def stepped_polarization(self, born_charges):
+    def stepped_polarization(self, config, born_charges):
 
         """
 
@@ -148,6 +135,11 @@ class BornPolarization():
             - a list of 3D vectors with the macroscopic polarization (in C/m2)
 
         """
+
+        if not isinstance(config, MCConfiguration):
+            raise ezSCUP.exceptions.InvalidMCConfiguration
+
+        self.config = config
 
         labels = list(born_charges.keys())
     
@@ -193,7 +185,7 @@ class BornPolarization():
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    def layered_polarization(self, born_charges):
+    def layered_polarization(self, config, born_charges):
 
         """
 
@@ -211,6 +203,11 @@ class BornPolarization():
             - a list of 3D vectors with the macroscopic polarization (in C/m2)
         
         """
+
+        if not isinstance(config, MCConfiguration):
+            raise ezSCUP.exceptions.InvalidMCConfiguration
+
+        self.config = config
 
         labels = list(born_charges.keys())
     
@@ -251,7 +248,7 @@ class BornPolarization():
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         
-    def perovs_unit_cell_polarization(self, born_charges):
+    def perovs_unit_cell_polarization(self, config, born_charges):
 
         """
 
@@ -271,6 +268,11 @@ class BornPolarization():
 
         
         """
+
+        if not isinstance(config, MCConfiguration):
+            raise ezSCUP.exceptions.InvalidMCConfiguration
+
+        self.config = config
 
         labels = list(born_charges.keys())
     
