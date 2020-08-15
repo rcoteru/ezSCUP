@@ -23,4 +23,4 @@
 /examples/*/plots/
 
 # Stuff from tests
-tests/*/*output/
+tests/*/*output*/

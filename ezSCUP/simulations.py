@@ -28,6 +28,7 @@ import re                           # regular expressions
 from ezSCUP.handlers import SCUPHandler, FDFSetting
 from ezSCUP.generators import RestartGenerator
 from ezSCUP.geometry import Geometry
+
 import ezSCUP.settings as cfg
 import ezSCUP.exceptions
 
@@ -613,7 +614,9 @@ class MCSimulation:
                 folder named "{}",
                 skipping simulation process.
                 Reason: OVERWRITE set to False.""".format(self.output_folder))
-                raise ezSCUP.exceptions.PreviouslyUsedOutputFolder()
+                self.SETUP = True
+                self.DONE = True
+                return 0
 
         # adjust the supercell as needed
         if self.supercell != None:
@@ -797,6 +800,10 @@ class MCSimulation:
             "Run MCSimulation.setup() before launching any simulation."
             )
 
+        # check if somulation has already been carried out
+        if self.DONE == True:
+            return 0
+
         # checks restart file matches loaded geometry
         if start_geo != None and isinstance(start_geo, RestartGenerator):
 
@@ -934,6 +941,10 @@ class MCSimulation:
             "Run MCSimulation.setup() before launching any simulation."
             )
 
+        # check if somulation has already been carried out
+        if self.DONE == True:
+            return 0
+
         # checks restart file matches loaded geometry
         if start_geo != None and isinstance(start_geo, RestartGenerator):
 
@@ -954,7 +965,7 @@ class MCSimulation:
 
         # adjust temperature ordering
         if inverse_order:
-            temp_sequence = reversed(list(self.temp))
+            temp_sequence = list(reversed(list(self.temp)))
         else:
             temp_sequence = list(self.temp)
 

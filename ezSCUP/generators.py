@@ -16,8 +16,10 @@ import csv                  # file printing
 from copy import deepcopy   # proper array copy
 
 # package imports
-import ezSCUP.settings as cfg
 from ezSCUP.geometry import UnitCell
+
+import ezSCUP.settings as cfg
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # MODULE STRUCTURE
