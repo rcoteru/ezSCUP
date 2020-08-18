@@ -1,5 +1,5 @@
 """
-Collection of auxiliary data structures.
+Classes and data structures to handle SCALE-UP geometry files.
 """
 
 __author__ = "Raúl Coterillo"
@@ -27,8 +27,8 @@ import ezSCUP.exceptions
 #   - __init__(reference_file)
 #   - load_restart(restart_file)
 #   - load_equilibrium_displacements(partials)
-#   - write_restart(fname)
-#   - write_reference(fname)
+#   - write_restart(restart_file)
+#   - write_reference(reference_file)
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -39,29 +39,31 @@ class UnitCell:
     Basic container for individual unit cell data.
 
     # BASIC USAGE # 
-    
 
-    It stores the basic information regarding a given unit cell,
-    namely the species, positions and displacements of its atoms.
+    Stores the basic information regarding a given unit cell,
+    namely the labels, positions and displacements of its atoms.
 
     Positions and displacements are stored as Python dictionaries,
     with the keys being the elements name and the value being 
     numpy [3x1] arrays. 
 
+    Attributes:
+    ----------
+
+    - nats (int): number of atoms per unit cell
+    - sc_pos (array): position of the cell within the supercell
+    - elements (list): labels for the atoms within the cells
+    - positions (dict): dictionary with atomic positions
+    - displacements (disct): dictionary with atomic displacements
+
     """
  
-    nats = 0                    # number of atoms
-    elements = []               # elements in the cell, in order
-    sc_pos = []                 # position in the supercell
-    positions = {}              # dictionary with atomic positions
-    displacements = {}          # dictionary with atomic displacements
-
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def __init__(self, sc_pos, elements, positions=None, displacements=None):
 
         """
-        Cell class constructor. 
+        UnitCell class constructor. 
 
         Parameters:
         ----------
@@ -129,39 +131,40 @@ class Geometry():
 
     # BASIC USAGE # 
     
-    Reads simulation data from a given configuration's .REF file. 
-    By default this class starts empty, until a file is loaded with 
-    the load() method.
+    Reads geometry data from a given configuration's .REF file,
+    yielding access to its contents through a cell structure within
+    the self.cells attribute. Atomic displcements and strains are
+    all set to zero by default, until a .restart geometry file is 
+    loaded using the self.load_restart() (only one file) or the
+    self.load_equilibrium_geometry() (average of several files) methods.
 
     Basic information about the simulation such as supercell shape,
     number of cells, elements, number of atoms per cell, lattice
     constants and cell information are accessible via attributes.
 
-    # ACCESSING INDIVIDUAL CELL DATA #
-
-    In order to access cell data after loading a file just the "cells" 
-    attribute in the following manner:
-
-        parser = REFParser()                    # instantiate the class
-        parser.load("example.REF")              # load the target file
-        desired_cell = parser.cells[x,y,z]      # access the desired cell
-        desired_cell.pos["element_label"]       # access its position data by label
-
-    where x, y and z is the position of the desired cell in the supercell.
-    This will return a "Cell" class with an attribute "pos", a dictionary
-    with the position vector for each element label (more within the
-    next section)
-
-    More on the Cell class in ezSCUP.structures.
-
     # ELEMENT LABELING #
 
-    By default, ScaleUp does not label elements in the output beside a 
+    By default, SCALE-UP does not label elements in the output beside a 
     non-descript number. This programs assigns a label to every atom in
     order to easily access their data from dictionaries.
 
     Suppose you have an SrTiO3 cell, only three elements but five atoms.
     Then the corresponding labels would be ["Sr","Ti","O1","O2","O3"].
+
+    # ACCESSING INDIVIDUAL CELL DATA #
+
+    In order to access cell data after loading a file just access the "cells" 
+    attribute in the following manner:
+
+        parser = REFParser()                            # instantiate the class
+        parser.load("example.REF")                      # load the target file
+        desired_cell = parser.cells[x,y,z]              # access the desired cell
+        desired_cell.positions["element_label"]         # access its position data by label
+        desired_cell.displacements["element_label"]     # access its displacement data by label
+
+    where x, y and z is the position of the desired cell in the supercell.
+
+    More on the UnitCell class at the beginning of this module.
 
     Attributes:
     ----------
@@ -171,11 +174,12 @@ class Geometry():
      - nats (int): number of atoms per unit cell
      - nels (int): number of distinct atomic species
      - species (list): atomic species within the supercell
-     - elements (list): labelsfor the atoms within the cells
-     
-     -strains
+     - elements (list): labels for the atoms within the cells
+     - strains (array): supercell strains, in Voigt notation
      - lat_vectors (1x9 array): lattice vectors, in Bohrs 
      - lat_constants (array): xx, yy, zz lattice constants, in Bohrs
+     - cells (array): array of UnitCell objects (ezSCUP.geometry.UnitCell)
+     containing the geometry information.
 
     """
 
@@ -254,6 +258,10 @@ class Geometry():
 
     def reset_geom(self):
 
+        """
+        Resets all strain and atomic displacement info back to zero.
+        """
+
         self.strains = np.zeros(6)
 
         for x in range(self.supercell[0]):
@@ -270,18 +278,17 @@ class Geometry():
 
         """
         
-        Loads the given .restart file.
+        Loads the given .restart file's information.
 
         Parameters:
         ----------
 
-        - fname  (string): name of the .restart file
+        - restart_file (string): name of the .restart file
+
+        raises: ezSCUP.exceptions.RestartNotMatching if the geometry contained
+        in the .restart file does not match the one loaded from the reference file.
 
         """
-
-        #########
-        # CHECK FILE EXISTS
-        #########
 
         self.reset_geom()
 
@@ -324,8 +331,18 @@ class Geometry():
     def load_equilibrium_displacements(self, partials):
 
         """
-        Obtains the equilibrium (average) displacements
-        out of several restart files.
+        
+        Obtains the equilibrium geometry out of several .restart files
+        by averaging out their strains and atomic displacements.
+
+        Parameters:
+        ----------
+
+        - partials (list): names of the .restart files.
+
+        raises: ezSCUP.exceptions.RestartNotMatching if the geometry contained in any
+        of the .restart file does not match the one loaded from the reference file.
+
         """
         
         self.reset_geom()
@@ -333,10 +350,6 @@ class Geometry():
         npartials = len(partials)
 
         for p in partials: # iterate over all partial .restarts
-
-            #########
-            # CHECK FILE EXISTS
-            #########
 
             f = open(p)
         
@@ -372,11 +385,21 @@ class Geometry():
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    def write_restart(self, fname):
+    def write_restart(self, restart_file):
 
-        """ Writes a restart file from loaded data. """
+        """ 
+        
+        Writes a .restart file from the current data. 
 
-        f = open(fname, 'wt')
+        Parameters:
+        ----------
+
+        - restart_file (string): .restart geometry file where to write everything.
+        WARNING: the file will be overwritten.
+
+        """
+
+        f = open(restart_file, 'wt')
         tsv = csv.writer(f, delimiter="\t")
 
         # write header
@@ -416,11 +439,21 @@ class Geometry():
         
         f.close()
 
-    def write_reference(self, fname):
+    def write_reference(self, reference_file):
 
-        """ Writes a reference file from loaded data. """
+        """ 
+        
+        Writes a reference (.REF) file from the current data. 
 
-        f = open(fname, 'wt')
+        Parameters:
+        ----------
+
+        - restart_file (string): .REF geometry file where to write everything.
+        WARNING: the file will be overwritten.
+
+        """
+
+        f = open(reference_file, 'wt')
         tsv = csv.writer(f, delimiter="\t")
 
         # write header

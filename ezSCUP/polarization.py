@@ -46,7 +46,7 @@ class BornPolarization():
 
     """ 
     
-    Calculates polarization from a diagonal Born effective charges matrix.
+    Calculates polarization from a diagonal effective charge matrix.
 
     Attributes:
     ----------
