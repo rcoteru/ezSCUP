@@ -11,9 +11,9 @@ import numpy as np          # matrix support
 
 # standard library imports
 from pathlib import Path    # file path management
-import os                   # file management
-import csv                  # file printing
 from copy import deepcopy   # proper array copy
+import os, csv              # file management
+
 
 # package imports
 from ezSCUP.geometry import UnitCell

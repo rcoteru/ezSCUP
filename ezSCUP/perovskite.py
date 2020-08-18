@@ -2,7 +2,8 @@
 
 Collection of functions designed to project structural modes, 
 such as the antiferrodistortive (AFD) and ferroelectric (FE) modes,
-on AB03 perovskites.
+on AB03 perovskites. There is also a method to obtain the per-unit-cell
+polarization.
 
 """
 
@@ -20,6 +21,7 @@ import os, sys
 
 # package imports
 from ezSCUP.simulations import MCConfiguration
+from ezSCUP.polarization import unit_conversion
 from ezSCUP.projection import ModeAnalyzer
 
 import ezSCUP.settings as cfg
@@ -29,10 +31,11 @@ import ezSCUP.exceptions
 # MODULE STRUCTURE
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 #
-# + func perovskite_AFD()
-# + func perovskite_FE_full()
-# + func perovskite_FE_simple()
-# + func perovskite_simple_rotation()
+# + func perovskite_AFD(config, labels, mode="a")
+# + func perovskite_FE_full(config, labels)
+# + func perovskite_FE_simple(config, labels, mode="B")
+# + func perovskite_simple_rotation(config, labels)
+# + func perovskite_polarization(config, labels, born_charges)
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -345,7 +348,7 @@ def perovskite_FE_simple(config, labels, mode="B"):
         if l not in config.geo.elements:
             raise ezSCUP.exceptions.InvalidLabel
 
-    A, B, Ox, Oy, Oz = labels
+    A, B, _, _, _ = labels
 
     analyzer = ModeAnalyzer()
 
@@ -471,4 +474,93 @@ def perovskite_simple_rotation(config, labels):
 
     return (x_angles, y_angles, z_angles)
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
+def perovskite_polarization(config, labels, born_charges):
+
+    """
+
+    Calculates supercell polarization in the current configuration
+    in a per-unit-cell basis using the given Born effective charges.
+
+    Parameters:
+    ----------
+
+    - born_charges (dict): dictionary with element labels as keys
+    and effective charge 3D vectors as values. (in elemental charge units)
+
+    Return:
+    ----------
+        - three supercell-sized arrays containing the polarization in the
+        x, y and z direction of each unit cell (in C/m2)
+
+    
+    """
+
+    if not isinstance(config, MCConfiguration):
+        raise ezSCUP.exceptions.InvalidMCConfiguration
+
+    config = config
+
+    for l in labels:
+        if l not in config.geo.elements:
+            raise ezSCUP.exceptions.InvalidLabel
+
+    A, B, Ox, Oy, Oz = labels
+
+    FE_mode=[  # atom, hopping, weight
+        # "frame"
+        [A, [0, 0, 0], 1./8.],
+        [A, [1, 0, 0], 1./8.],
+        [A, [1, 1, 0], 1./8.],
+        [A, [0, 1, 0], 1./8.],
+        [A, [0, 0, 1], 1./8.],
+        [A, [1, 0, 1], 1./8.],
+        [A, [1, 1, 1], 1./8.],
+        [A, [0, 1, 1], 1./8.],
+        # "octahedra"
+        [B, [0, 0, 0], 1.], # b site
+        [Ox, [0, 0, 0], 1./2.], 
+        [Ox, [1, 0, 0], 1./2.],
+        [Oy, [0, 0, 0], 1./2.],
+        [Oy, [0, 1, 0], 1./2.],
+        [Oz, [0, 0, 0], 1./2.],
+        [Oz, [0, 0, 1], 1./2.]
+    ]
+
+    cnts = config.geo.lat_constants
+    stra = config.geo.strains
+
+    ucell_volume = (cnts[0]*(1+stra[0]))*(cnts[1]*(1+stra[1]))*(cnts[2]*(1+stra[2]))
+
+    polx = np.zeros(config.geo.supercell)
+    poly = np.zeros(config.geo.supercell)
+    polz = np.zeros(config.geo.supercell)
+
+    for x in range(config.geo.supercell[0]):
+        for y in range(config.geo.supercell[1]):
+            for z in range(config.geo.supercell[2]):
+
+                pol = np.zeros(3)
+                cell = np.array([x,y,z])
+
+                for atom in FE_mode:
+
+                    atom_cell = np.mod(cell + atom[1], config.geo.supercell)
+                    nx, ny, nz = atom_cell
+
+                    tau = config.geo.cells[nx,ny,nz].displacements[atom[0]]
+                    charges = born_charges[atom[0]]
+                    
+                    for i in range(3):
+                        pol[i] += atom[2]*charges[i]*tau[i]
+
+                pol = pol/ucell_volume # in e/bohr2
+                pol = unit_conversion(pol)
+
+                polx[x,y,z] = pol[0]
+                poly[x,y,z] = pol[1]
+                polz[x,y,z] = pol[2]
+
+    
+    return polx, poly, polz

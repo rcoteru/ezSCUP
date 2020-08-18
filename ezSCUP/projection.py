@@ -27,9 +27,8 @@ import ezSCUP.exceptions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 #
 # + class ModeAnalyzer()
-#   - load()
-#   - measure()
-#   - restore()
+#   - measure(config, pattern)
+#   - restore() # TODO
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 

@@ -1,7 +1,7 @@
 """
-Collection of classes to mass-execute ScaleUP simulations.
+Collection of classes to mass-execute SCALE-UP simulations.
 
-Classes to execute ScaleUp simulations in a range of 
+Classes to execute SCALE-UP simulations in a range of 
 temperature, strain, stress and electric field settings 
 with ease. Each simulation class comes with a parser that 
 automates the process of dealing with the output data.
@@ -213,13 +213,13 @@ class MCConfiguration:
         # selects only partials above self.step_threshold steps
         step_filter = [int(p[len(base_sim_name)+10:-8]) > self.step_threshold for p in partials]
         partials = [p for i, p in enumerate(partials) if step_filter[i]]
-        partials = [os.path.join(self.folder_path, p) for p in partials]
+        self.partials = [os.path.join(self.folder_path, p) for p in partials]
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
         reference_file = os.path.join(folder, base_sim_name + "_FINAL.REF")
 
         self.geo = Geometry(reference_file)
-        self.geo.load_equilibrium_displacements(partials)
+        self.geo.load_equilibrium_displacements(self.partials)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         
