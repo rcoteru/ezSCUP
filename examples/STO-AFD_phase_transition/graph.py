@@ -8,6 +8,7 @@ within each folder.
 
 
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 import pandas as pd
 import numpy as np
 
@@ -22,12 +23,7 @@ plt.figure("libre_AFDstra", figsize=[12,5])
 plt.subplots_adjust(left=0.05, bottom=0.12, right=0.93, top=0.9, wspace=0.02, hspace=0)
 
 # AFD
-frames = []
-for folder in folders:
-    df = pd.read_csv(folder + "/csv/AFDa.csv")
-    frames.append(df.copy())
-AFDa = pd.concat(frames)
-AFDa.to_csv("AFDaFINAL.csv", index=False)
+AFDa = pd.read_csv("csv/AFDa.csv")
 
 ax1 = plt.subplot(121)
 plt.title("(a) AFD$^{a}$ mode", fontsize=titlesize)
@@ -41,13 +37,8 @@ plt.legend(frameon = True, fontsize = legendsize)
 plt.grid(True)
 
 
-# strain 
-frames = []
-for folder in folders:
-    df = pd.read_csv(folder + "/csv/strain.csv")
-    frames.append(df.copy())
-strains = pd.concat(frames)
-strains.to_csv("strainFINAL.csv", index=False)
+# STRAINS
+strains = pd.read_csv("csv/strain.csv")
 
 ax2 = plt.subplot(122)
 ax2.yaxis.tick_right()
@@ -64,7 +55,7 @@ plt.grid(True)
 
 plt.savefig("libre_AFDstra.png")
 
-#EXPANSION COEFFICIENT
+# LINEAR EXPANSION COEFFICIENT
 
 def line(x, a, b):
     return a + b*x

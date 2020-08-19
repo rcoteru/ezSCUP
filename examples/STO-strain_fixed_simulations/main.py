@@ -1,7 +1,7 @@
 """
 
 Executes STO simulations for three different epitaxial strain restrictions,
-temperatures spanning between 20 K and 300 K, in 8x8x8 supercells.
+temperatures spanning between 20 K and 400 K, in 6x6x6 supercells.
 
 
 """
@@ -24,9 +24,9 @@ import numpy as np
 
 # ezSCUP imports
 from ezSCUP.simulations import MCSimulation, MCConfiguration, MCSimulationParser
+from ezSCUP.perovskite import perovskite_AFD, perovskite_FE_full, perovskite_FE_simple
+from ezSCUP.perovskite import perovskite_polarization, perovskite_simple_rotation
 
-from ezSCUP.perovskite import perovskite_AFD, perovskite_FE_full, perovskite_FE_simple, perovskite_simple_rotation
-from ezSCUP.polarization import BornPolarization
 from ezSCUP.files import save_file
 
 import ezSCUP.settings as cfg
@@ -37,27 +37,35 @@ import ezSCUP.settings as cfg
 
 # IMPORTANT: location of the Scale-Up executable in the system
 cfg.SCUP_EXEC = "/home/raul/Software/scale-up-1.0.0/build_dir/src/scaleup.x"
-
 cfg.OVERWRITE = False                       # overwrite old output folder?
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~ SIMULATION SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-SUPERCELL = [8,8,8]                         # shape of the supercell
+launch_simulation = True                    # whether to lauch the simulation
+
+SUPERCELL = [6,6,6]                         # shape of the supercell
 SPECIES = ["Sr", "Ti", "O"]                 # elements in the lattice
 LABELS = ["Sr", "Ti", "O3", "O2", "O1"]     # [A, B, 0x, Oy, Oz]
 NATS = 5                                    # number of atoms per cell
+BORN_CHARGES = {                            # Born effective charges
+        "Sr": np.array([2.566657, 2.566657, 2.566657]),
+        "Ti": np.array([7.265894, 7.265894, 7.265894]),
+        "O3": np.array([-5.707345, -2.062603, -2.062603]),
+        "O2": np.array([-2.062603, -5.707345, -2.062603]),
+        "O1": np.array([-2.062603, -2.062603, -5.707345]),
+    }
 
-TEMPERATURES = np.linspace(20, 300, 10)     # temperatures to simulate
+TEMPERATURES = np.linspace(20, 400, 15)     # temperatures to simulate
 STRAINS = [                                 # strains to simulate
     [+0.03, +0.03, 0.0, 0.0, 0.0, 0.0],
     [+0.00, +0.00, 0.0, 0.0, 0.0, 0.0],
     [-0.03, -0.03, 0.0, 0.0, 0.0, 0.0]
 ]   # +-3% and 0% cell strain in the x and y direction (Voigt notation)
 
-cfg.MC_STEPS = 5000                         # MC total steps
-cfg.MC_EQUILIBRATION_STEPS = 500            # MC equilibration steps
+cfg.MC_STEPS = 1000                         # MC total steps
+cfg.MC_EQUILIBRATION_STEPS = 100            # MC equilibration steps
 cfg.MC_STEP_INTERVAL = 20                   # MC steps between partial files
 cfg.LATTICE_OUTPUT_INTERVAL = 10            # MC steps between output prints  
 # fixed strain components: xx, yy, xy (Voigt notation)
@@ -539,15 +547,6 @@ def display_strain(temp, strain):
 def read_polarization(temp, s, module=False):
 
     sim = MCSimulationParser()
-    born = BornPolarization()
-
-    born_charges = {
-        "Sr": np.array([2.566657, 2.566657, 2.566657]),
-        "Ti": np.array([7.265894, 7.265894, 7.265894]),
-        "O3": np.array([-5.707345, -2.062603, -2.062603]),
-        "O2": np.array([-2.062603, -5.707345, -2.062603]),
-        "O1": np.array([-2.062603, -2.062603, -5.707345]),
-    }
 
     pols = []
     pols_err = []
@@ -555,8 +554,7 @@ def read_polarization(temp, s, module=False):
 
         config = sim.access(t, s=s)
 
-        born.load(config)
-        polx, poly, polz = born.perovs_unit_cell_polarization(born_charges)
+        polx, poly, polz = perovskite_polarization(config, LABELS, BORN_CHARGES)
 
         if module:
             px = np.mean(np.abs(polx))
@@ -653,13 +651,15 @@ def display_polarization(temp, strain, module=False):
 
 if __name__ == "__main__":
 
-    # create simulation class
-    sim = MCSimulation()
-    sim.setup("input.fdf", SUPERCELL, SPECIES, NATS,
-    temp = TEMPERATURES, strain=STRAINS)
+    if launch_simulation:
+        
+        # create simulation class
+        sim = MCSimulation()
+        sim.setup("input.fdf", SUPERCELL, SPECIES, NATS,
+        temp = TEMPERATURES, strain=STRAINS)
 
-    # simulate and properly store output
-    sim.sequential_launch_by_temperature(inverse_order=True)
+        # simulate and properly store output
+        sim.sequential_launch_by_temperature(inverse_order=True)
 
     try: #create the "plots" folder if needed
         os.mkdir("plots")

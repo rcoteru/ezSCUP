@@ -597,6 +597,7 @@ class MCSimulation:
         try:
             self.main_output_folder = os.path.join(self.current_path, self.output_folder)
             os.makedirs(self.main_output_folder)
+            self.DONE = False
         except FileExistsError: # check whether directory already exists
             if cfg.OVERWRITE:
                 print("""
@@ -606,6 +607,7 @@ class MCSimulation:
                 Reason: OVERWRITE set to True.""".format(self.output_folder))
                 rmtree(self.main_output_folder)
                 os.makedirs(self.main_output_folder)
+                self.DONE = False
                 print("")
                 pass
             else:
@@ -726,6 +728,7 @@ class MCSimulation:
             os.makedirs(main_output_folder)
             self.output_folder = new_output_folder
             self.main_output_folder = main_output_folder
+            self.DONE = False
 
         except FileExistsError: # check whether directory already exists
             if cfg.OVERWRITE:
@@ -738,6 +741,7 @@ class MCSimulation:
                 os.makedirs(main_output_folder)
                 self.output_folder = new_output_folder
                 self.main_output_folder = main_output_folder
+                self.DONE = False
                 print("")
                 pass
             else:

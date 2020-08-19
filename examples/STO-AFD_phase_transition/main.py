@@ -24,7 +24,7 @@ import numpy as np
 
 # ezSCUP imports
 from ezSCUP.simulations import MCSimulation, MCConfiguration, MCSimulationParser
-from ezSCUP.analysis import perovskite_AFD, perovskite_simple_rotation, BornPolarization
+from ezSCUP.perovskite import perovskite_AFD, perovskite_FE_full, perovskite_polarization
 from ezSCUP.files import save_file
 import ezSCUP.settings as cfg
 
@@ -33,41 +33,59 @@ import ezSCUP.settings as cfg
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 # IMPORTANT: location of the Scale-Up executable in the system
-cfg.SCUP_EXEC = "/home/citimac/jjunquer/Code/Git/scaleup/Obj/Intel-Parallel-OpenMP/src/scaleup.x"
-
+cfg.SCUP_EXEC = "/home/raul/Software/scale-up-1.0.0/build_dir/src/scaleup.x"
 OVERWRITE = False                           # overwrite old output folder?
 
-SUPERCELL = [8,8,8]                         # shape of the supercell
-ELEMENTS = ["Sr", "Ti", "O"]                # elements in the lattice
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~ SIMULATION SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+launch_simulation = True                    # whether to lauch the simulation
+
+SUPERCELL = [6,6,6]                         # shape of the supercell
+SPECIES = ["Sr", "Ti", "O"]                 # elements in the lattice
+LABELS = ["Sr", "Ti", "O3", "O2", "O1"]     # [A, B, 0x, Oy, Oz]
 NATS = 5                                    # number of atoms per cell
+BORN_CHARGES = {                            # Born effective charges
+        "Sr": np.array([2.566657, 2.566657, 2.566657]),
+        "Ti": np.array([7.265894, 7.265894, 7.265894]),
+        "O3": np.array([-5.707345, -2.062603, -2.062603]),
+        "O2": np.array([-2.062603, -5.707345, -2.062603]),
+        "O1": np.array([-2.062603, -2.062603, -5.707345]),
+    }
 
-TEMPERATURES = np.linspace(20, 260, 13)     # temperatures to simulate         
+TEMPS_LOW = np.linspace(20, 260, 13)        # ranges of temperature to simulate         
+TEMPS_MID = np.linspace(270, 340, 8)
+TEMPS_HGH = np.linspace(360, 400, 5)
 
-cfg.MC_STEPS = 40000                        # MC total steps
-cfg.MC_EQUILIBRATION_STEPS = 25000           # MC equilibration steps
-cfg.MC_STEP_INTERVAL = 50                   # MC steps between partial files
-cfg.LATTICE_OUTPUT_INTERVAL = 25            # MC steps between output prints  
+TEMPERATURES = np.concatenate((TEMPS_LOW, TEMPS_MID, TEMPS_HGH))
+
+cfg.MC_STEPS = 1000                         # MC total steps
+cfg.MC_EQUILIBRATION_STEPS = 100            # MC equilibration steps
+cfg.MC_STEP_INTERVAL = 20                   # MC steps between partial files
+cfg.LATTICE_OUTPUT_INTERVAL = 10            # MC steps between output prints  
+cfg.MC_MAX_JUMP = 0.15                      # MC max jump size (in Angstrom)
 cfg.FIXED_STRAIN_COMPONENTS = [False]*6     # fixed strain components (none)
 
-plot_AFDa =   False                          # plot AFDa distortion angles?
-plot_AFDi =   False                          # plot AFDi distortion angles?
-plot_FE = True
-plot_polarizarion = True
-plot_strain = False                          # plot strains?
-plot_vectors = False                        # plot vector fields?
-# temperatures for which to plot rotation vector field
-VECTOR_TEMPS = [TEMPERATURES[0]] 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~ ANALYSIS SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+plot_AFDa =   True                          # plot AFDa distortion angles?
+plot_AFDi =   True                          # plot AFDi distortion angles?
+
+plot_strain = True                          # plot strains?
+plot_stepped_strain = True                  # if plotting strain, plot step-wise?
+
+plot_polarizarion = True                    # plot polarization?
 
 show_plots =  True                          # show the created plots?
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-# ~~~~~~~~~~~~~~~~~~~~~~~ code starts here ~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-
-#####################################################################
 #              FUNCTIONS TO OBTAIN THE AFD ROTATIONS                #
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 def read_AFD(temp, mode="a"):
 
@@ -85,11 +103,9 @@ def read_AFD(temp, mode="a"):
     rotations_err = []
     for t in temp: # read all files
 
-        # Ox, Oy, Oz = O3, O2, O1
         config = sim.access(t)
-        labels = ["Sr", "Ti", "O3", "O2", "O1"]
 
-        x_angles, y_angles, z_angles = perovskite_AFD(config, labels, mode)
+        x_angles, y_angles, z_angles = perovskite_AFD(config, LABELS, mode)
 
         x_axis_rot = np.mean(np.abs(x_angles))
         x_axis_rot_err = np.std(np.abs(x_angles))
@@ -145,7 +161,7 @@ def display_AFD(temp, mode="a"):
 
     # plotting
     
-    fig = plt.figure("AFD" + mode + ".png")
+    plt.figure("AFD" + mode + ".png")
 
     plt.errorbar(temp, xrot, yerr=xrot_err, label=r"AFD$_{x}^{" + mode + "}$", marker ="<") 
     plt.errorbar(temp, yrot, yerr=yrot_err, label=r"AFD$_{y}^{" + mode + "}$", marker =">") 
@@ -164,36 +180,24 @@ def display_AFD(temp, mode="a"):
     plt.savefig("plots/AFD" + mode + ".png")
     plt.draw()
 
-
-#####################################################################
-#                 FUNCTIONS TO OBTAIN THE POLARIZATION              #
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+#              FUNCTIONS TO OBTAIN THE POLARIZATION                 #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 def read_polarization(temps, module=False):
 
     """ Calculates the average strains for each temperature. """
 
     sim = MCSimulationParser()
-    born = BornPolarization()
-    sim.index()
-
-
-    labels = ["Sr", "Ti", "O3", "O2", "O1"]
-    born_charges = {
-        "Sr": np.array([2.566657, 2.566657, 2.566657]),
-        "Ti": np.array([7.265894, 7.265894, 7.265894]),
-        "O3": np.array([-5.707345, -2.062603, -2.062603]),
-        "O2": np.array([-2.062603, -5.707345, -2.062603]),
-        "O1": np.array([-2.062603, -2.062603, -5.707345]),
-    }
 
     pols = []
     pols_err = []
     for t in temps: # read all files
 
         config = sim.access(t)
-        born.load(config)
-        polx, poly, polz = born.perovs_unit_cell_polarization(born_charges)
+        polx, poly, polz = perovskite_polarization(config, LABELS, BORN_CHARGES)
 
         if module:
             px = np.mean(np.abs(polx))
@@ -270,34 +274,33 @@ def display_polarization(temps, module=False):
 
     plt.draw()
 
-
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 #                 FUNCTIONS TO OBTAIN THE STRAINS                   #
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 def read_strain(temps):
 
     """ Calculates the average strains for each temperature. """
 
     sim = MCSimulationParser()
-    sim.index()
 
     strains = []
     strains_err = []
     for t in temps: # read all files
 
-        sim.access(t)
-        data = sim.parser.lattice_output()
+        config = sim.access(t)
+        data = config.lattice_output()
 
-        # rolling(40).mean()
-
-        plt.figure(int(t))
-        plt.plot(data["Strn_xx"], label="x")
-        plt.plot(data["Strn_yy"], label="y")
-        plt.plot(data["Strn_zz"], label="z")
-        plt.legend()
-        plt.savefig("plots/test/t{:d}.png".format(int(t)))
-        plt.close()
+        if plot_stepped_strain:
+            plt.figure(int(t))
+            plt.plot(data["Strn_xx"], label="x")
+            plt.plot(data["Strn_yy"], label="y")
+            plt.plot(data["Strn_zz"], label="z")
+            plt.legend()
+            plt.savefig("plots/test/t{:d}.png".format(int(t)))
+            plt.close()
 
         sx = data["Strn_xx"].mean()
         sy = data["Strn_yy"].mean()
@@ -366,24 +369,35 @@ def display_strain(temps):
     plt.savefig("plots/strain.png")
     plt.draw()
 
-
-#####################################################################
-#                       MAIN FUNCTION CALL                          #
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+#                     MAIN FUNCTION CALL                            #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 if __name__ == "__main__":
 
-    # create simulation class
-    #sim = MCSimulation(SUPERCELL, ELEMENTS, NATS, OVERWRITE)
+    if launch_simulation:
 
-    # simulate and properly store output
-    #sim.launch("input.fdf", temp=TEMPERATURES)
+        # create simulation class
+        sim = MCSimulation()
+        sim.setup(
+            "input.fdf", SUPERCELL, SPECIES, NATS,
+            temp = TEMPERATURES, output_folder = "output"
+        )
+        
+        # simulate from high to low temp
+        sim.sequential_launch_by_temperature(inverse_order=True)
 
     try: #create the "plots" folder if needed
         os.mkdir("plots")
     except FileExistsError:
         pass
     
+    try: #create the "plots" folder if needed
+        os.mkdir("plots/test")
+    except FileExistsError:
+        pass
 
     try: # create the "csv" folder if needed
         os.mkdir("csv")
@@ -411,19 +425,18 @@ if __name__ == "__main__":
         end = time.time()
         print("\n DONE! Time elapsed: {:.3f}s".format(end-start))
 
-
-    if plot_polarizarion: # plot strain if needed
+    if plot_polarizarion: # plot polarization if needed
         print("\nGenerating polarization plot...")
         start = time.time()
         display_polarization(TEMPERATURES, module=True)
         end = time.time()
         print("\n DONE! Time elapsed: {:.3f}s".format(end-start))
 
-   
     if show_plots:
         print("\n Displaying selected plots...")
         plt.show()
     
     print("\nEVERYTHING DONE!")
 
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #

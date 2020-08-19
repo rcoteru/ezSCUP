@@ -55,7 +55,7 @@ SUPERCELL = [4,4,4]                         # shape of the supercell
 SPECIES = ["Sr", "Ti", "O"]                 # elements in the lattice
 LABELS = ["Sr", "Ti", "O3", "O2", "O1"]     # [A, B, 0x, Oy, Oz]
 NATS = 5                                    # number of atoms per cell
-BORN_CHARGES = {
+BORN_CHARGES = {                            # Born effective charges
         "Sr": np.array([2.566657, 2.566657, 2.566657]),
         "Ti": np.array([7.265894, 7.265894, 7.265894]),
         "O3": np.array([-5.707345, -2.062603, -2.062603]),
