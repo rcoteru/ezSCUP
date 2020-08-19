@@ -24,7 +24,8 @@ import numpy as np
 
 # ezSCUP imports
 from ezSCUP.simulations import MCSimulation, MCConfiguration, MCSimulationParser
-from ezSCUP.analysis import perovskite_AFD, perovskite_FE_full, BornPolarization, perovskite_simple_rotation
+from ezSCUP.perovskite import perovskite_polarization, perovskite_simple_rotation
+from ezSCUP.perovskite import perovskite_AFD, perovskite_FE_full
 from ezSCUP.files import save_file
 import ezSCUP.settings as cfg
 
@@ -37,30 +38,38 @@ cfg.SCUP_EXEC = "/home/raul/Software/scale-up/build_dir/src/scaleup.x"
 
 OVERWRITE = False                           # overwrite old output folder?
 
-
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~ SIMULATION SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-SUPERCELL = [8,8,8]                         # shape of the supercell
-ELEMENTS = ["Sr", "Ti", "O"]                # elements in the lattice
+SUPERCELL = [6,6,6]                         # shape of the supercell
+SPECIES = ["Sr", "Ti", "O"]                 # elements in the lattice
+LABELS = ["Sr", "Ti", "O3", "O2", "O1"]     # [A, B, 0x, Oy, Oz]
 NATS = 5                                    # number of atoms per cell
+BORN_CHARGES = {                            # Born effective charges
+        "Sr": np.array([2.566657, 2.566657, 2.566657]),
+        "Ti": np.array([7.265894, 7.265894, 7.265894]),
+        "O3": np.array([-5.707345, -2.062603, -2.062603]),
+        "O2": np.array([-2.062603, -5.707345, -2.062603]),
+        "O1": np.array([-2.062603, -2.062603, -5.707345]),
+    }
 
-TEMPERATURES = np.linspace(20, 300, 10)     # temperatures to simulate
+TEMPERATURES = np.linspace(20, 400, 15)     # temperatures to simulate
 STRAINS = [                                 # strains to simulate
     [+0.03, +0.03, 0.0, 0.0, 0.0, 0.0],
     [+0.00, +0.00, 0.0, 0.0, 0.0, 0.0],
     [-0.03, -0.03, 0.0, 0.0, 0.0, 0.0]
 ]   # +-3% and 0% cell strain in the x and y direction (Voigt notation)
 
-cfg.MC_STEPS = 40000                        # MC total steps
-cfg.MC_EQUILIBRATION_STEPS = 5000           # MC equilibration steps
-cfg.MC_STEP_INTERVAL = 50                   # MC steps between partial files
+
+cfg.MC_STEPS = 1000                         # MC total steps
+cfg.MC_EQUILIBRATION_STEPS = 100            # MC equilibration steps
+cfg.MC_STEP_INTERVAL = 20                   # MC steps between partial files
 cfg.LATTICE_OUTPUT_INTERVAL = 10            # MC steps between output prints  
 # fixed strain components: xx, yy, xy (Voigt notation)
 cfg.FIXED_STRAIN_COMPONENTS = [True, True, False, False, False, True]
 
-cfg.PRINT_CONF_SETTINGS = True              # (DEBUGGING) print individual FDF settings
-
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~ ANALYSIS SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -87,13 +96,10 @@ BORN_CHARGES = {
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-# ~~~~~~~~~~~~~~~~~~~~~~~ code starts here ~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-
-#####################################################################
-#                       MAIN FUNCTION CALL
-#####################################################################
+#                     MAIN FUNCTION CALL                            #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 if __name__ == "__main__":
 
@@ -104,9 +110,6 @@ if __name__ == "__main__":
 
 
     sim = MCSimulationParser()
-    sim.index()
-    
-    born = BornPolarization()
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # dominios expansivo plano xy T=20K ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -115,13 +118,12 @@ if __name__ == "__main__":
     if plot_expansivo_0:
 
         config = sim.access(TEMPERATURES[0], s=STRAINS[0])
-        born.load(config)
 
         plt.figure("expansivo_dominios0", figsize=[16,5])
         plt.subplots_adjust(left=0.03, bottom=0.12, right=0.99, top=0.9, wspace=0.02, hspace=0)
         plt.tight_layout()
 
-        polx, poly, polz = born.perovs_unit_cell_polarization(BORN_CHARGES)
+        polx, poly, polz = perovskite_polarization(config, LABELS, BORN_CHARGES)
 
         polu = polx[:,:,0]
         polv = poly[:,:,0]
@@ -133,8 +135,6 @@ if __name__ == "__main__":
         print("row 3:", np.mean(polu[:,3]))
         print("row 4:", np.mean(polu[:,4]))
         print("row 5:", np.mean(polu[:,5]))
-        print("row 6:", np.mean(polu[:,6]))
-        print("row 7:", np.mean(polu[:,7]))
 
         print("y polarization")
         print("row 0:", np.mean(polv[:,0]))
@@ -143,8 +143,6 @@ if __name__ == "__main__":
         print("row 3:", np.mean(polv[:,3]))
         print("row 4:", np.mean(polv[:,4]))
         print("row 5:", np.mean(polv[:,5]))
-        print("row 6:", np.mean(polv[:,6]))
-        print("row 7:", np.mean(polv[:,7]))
 
         ax1 = plt.subplot(141, ymargin=2)
         plt.title("(a) Polarization")
@@ -204,7 +202,6 @@ if __name__ == "__main__":
     if plot_expansivo_1:
 
         config = sim.access(TEMPERATURES[1], s=STRAINS[0])
-        born.load(config)
 
         plt.figure("expansivo_dominios1", figsize=[16,5])
         plt.subplots_adjust(left=0.03, bottom=0.12, right=0.99, top=0.9, wspace=0.02, hspace=0)
@@ -212,7 +209,7 @@ if __name__ == "__main__":
 
         plane = 0
 
-        polx, poly, polz = born.perovs_unit_cell_polarization(BORN_CHARGES)
+        polx, poly, polz = perovskite_polarization(config, LABELS, BORN_CHARGES)
 
         polu = polx[:,:,plane]
         polv = poly[:,:,plane]
@@ -274,7 +271,6 @@ if __name__ == "__main__":
     if plot_expansivo_1_extra:
 
         config = sim.access(TEMPERATURES[1], s=STRAINS[0])
-        born.load(config)
 
         plt.figure("expansivo_dominios1_extra", figsize=[5,10])
         plt.subplots_adjust(left=0.1, bottom=0.05, right=0.97, top=0.95, wspace=0.02, hspace=0.1)
@@ -322,13 +318,12 @@ if __name__ == "__main__":
     if plot_expansivo_2:
 
         config = sim.access(TEMPERATURES[2], s=STRAINS[0])
-        born.load(config)
 
         plt.figure("expansivo_dominios2", figsize=[16,5])
         plt.subplots_adjust(left=0.03, bottom=0.12, right=0.99, top=0.9, wspace=0.02, hspace=0)
         plt.tight_layout()
 
-        polx, poly, polz = born.perovs_unit_cell_polarization(BORN_CHARGES)
+        polx, poly, polz = perovskite_polarization(config, LABELS, BORN_CHARGES)
 
         polu = polx[:,:,0]
         polv = poly[:,:,0]
@@ -391,7 +386,6 @@ if __name__ == "__main__":
     if plot_expansivo_7:
 
         config = sim.access(TEMPERATURES[6], s=STRAINS[0])
-        born.load(config)
 
         plt.figure("compresivo_dominios7", figsize=[5,5])
         plt.subplots_adjust(left=0.05, bottom=0.12, right=0.95, top=0.9, wspace=0.02, hspace=0)
@@ -420,7 +414,6 @@ if __name__ == "__main__":
     if plot_compresivo_1:
 
         config = sim.access(TEMPERATURES[1], s=STRAINS[2])
-        born.load(config)
 
         plt.figure("compresivo_dominios1", figsize=[16,5])
         plt.subplots_adjust(left=0.03, bottom=0.12, right=0.99, top=0.9, wspace=0.02, hspace=0)
