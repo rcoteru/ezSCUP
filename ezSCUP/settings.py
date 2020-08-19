@@ -4,7 +4,7 @@ General settings for the ezSCUP package.
 
 __author__ = "Raúl Coterillo"
 __email__  = "raulcote98@gmail.com"
-__status__ = "Development"
+__status__ = "v2.0"
 
 #####################################################################
 ##  EZSCUP SETTINGS
@@ -13,7 +13,14 @@ __status__ = "Development"
 # Location of the Scale-Up executable in the system
 # This setting is required to run any simulations.
 # default: None
+#SCUP_EXEC = "/home/raul/Software/scale-up-1.0.0/build_dir/src/scaleup.x"
+#SCUP_EXEC = "/home/citimac/jjunquer/Code/Git/scaleup/Obj/Intel-Parallel-OpenMP/src/scaleup.x"
 SCUP_EXEC = None
+
+# Whether or not to overwrite old output when starting a 
+# new simulation run. 
+# default: False
+OVERWRITE = False
 
 # Equilibration steps for MC simulations
 # By default this disabled, but running any simulations
@@ -30,7 +37,7 @@ LT_SEARCH_WORD = "LT:"
 
 # whether to print individual configuration settings, mainly 
 # for debugging purposes
-PRINT_CONF_SETTINGS = True
+PRINT_CONF_SETTINGS = False
 
 #####################################################################
 ##  FDF SETTINGS

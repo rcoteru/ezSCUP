@@ -1,13 +1,11 @@
 """
-Collection of classes to handle interaction with ScaleUp.
-
-Allows loading FDF files, to later modify its 
-settings and or launch ScaleUp simulations.
+Classes and structures to handle direct interaction with SCALE-UP,
+from FDF settings to launching simulations.
 """
 
 __author__ = "Raúl Coterillo"
 __email__  = "raulcote98@gmail.com"
-__status__ = "Development"
+__status__ = "v2.0"
 
 # third party imports
 import numpy as np
@@ -18,27 +16,84 @@ from pathlib import Path
 import os, sys
 
 # package imports
-
-from ezSCUP.structures import FDFSetting
 import ezSCUP.settings as cfg
 import ezSCUP.exceptions
 
-#####################################################################
-## MODULE STRUCTURE
-#####################################################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# MODULE STRUCTURE
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+#
+# + FDFSetting()
+#   - __init__()
+#   - __str__()
+#
+# + class SCUPHandler()
+#   - __init__()
+#   - load()
+#   - save_as()
+#   - launch()
+#   - print_all()
+#
+#
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-# class SCUPHandler()
 
-#####################################################################
-## CLASS DEFINITIONS
-#####################################################################
+class FDFSetting():
+
+    """ 
+
+    Structure for n standard (non-block) FDF setting.    
+    Allows easy storage of both value and units (if needed).
+
+    Attributes:
+    ----------
+    
+    - value (int, float, boolean): value of the setting
+    - unit (string): unit of the setting, if applicable
+
+    """
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def __init__(self, value, unit=None):
+
+        """
+        
+        FDFSetting class constructor.
+
+        Parameters:
+        ----------
+        - value  (?): value of the setting
+        - unit (string): unit for the setting, if needed.
+
+        """
+
+        self.value = value
+        self.unit = str(unit).strip()
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def __str__(self):
+
+        """ Defines conversion to string for printing. """
+
+        if self.unit == "None":
+            return str(self.value)
+        else:
+            return str(self.value) + " " + self.unit
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+# ================================================================= #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ================================================================= #
 
 class SCUPHandler():
 
     """
 
-    Loads the setting in a given FDF file, allowing
-    easy modification and launch of ScaleUP simulations.
+    Loads the setting in a given FDF file, allowing easy input 
+    modification and launch of SCALE-UP simulations.
     
     # BASIC USAGE # 
     
@@ -53,19 +108,45 @@ class SCUPHandler():
     The cell structure in this class only constains displacement info.
     More on cell information storage in ezSCUP.structures.
 
+    Attributes:
+    ----------
+
+    - scup_exec (string): path to SCALE-UP executable
+    - fname (string): loaded input file
+    - settings (dict): current FDF settings
+    - original_settings (dict): original FDF settings
+
     """
 
-    fname = ""                  # loaded file name
-    scup_exec = ""              # ScaleUP executable path
-    settings = None             # Current settings
-    original_settings = {}      # Original settings
-
-    #######################################################
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def __init__(self, scup_exec):
+
+        """
+        SCUPHandler class constructor.
+
+        Parameters:
+        ----------
+        - scup_exec (string): path to the system's SCALE-UP executable
+
+        """
+
         self.scup_exec = scup_exec
+        self.settings = None
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def load(self, fname):
+
+        """
+        Loads an SCALE-UP input (.fdf) file, storing its settings for
+        a future simulation.
+
+        Parameters:
+        ----------
+        - fname (string): input (.fdf) file to load.
+        
+        """
         
         self.fname = fname
 
@@ -127,10 +208,20 @@ class SCUPHandler():
         
         pass
 
-
-
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def save_as(self, fname):
+
+        """
+        Save the current FDF settings in self.settings as an SCALE-UP
+        input file (fdf).
+
+        Parameters:
+        ----------
+        - fname (string): filepath where to save the input file.
+        WARNING: existing file with the same name may be overwritten.
+        
+        """
 
         if self.fname == fname:
             print("WARNING: Attempting to overwite original input. Aborting.")
@@ -171,8 +262,18 @@ class SCUPHandler():
         if cfg.PRINT_CONF_SETTINGS:
                 print("\n")
 
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def launch(self, output_file=None):
+
+        """
+        Execute a SCALE-UP simulation with the current FDF settings.
+
+        Parameters:
+        ----------
+        - output_file: human output filename. Defaults to [system_name].out.
+
+        """
 
         if len(self.settings) == 0:
             print("WARNING: No settings file loaded.")
@@ -198,11 +299,18 @@ class SCUPHandler():
         # remove temporary input
         os.remove("modinput.fdf")
 
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def print_all(self):
+
+        """
+        Print current FDF settings.
+        """
 
         for k in self.settings:
             print(k, str(self.settings[k]))
 
         pass
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
             
