@@ -10,7 +10,7 @@
 /*.egg
 
 # Output Files
-*.png
+#*.png
 !example.png
 *.csv
 *.restart
@@ -19,5 +19,8 @@
 
 # Output Folders
 /examples/*/output/
-/examples/*/csv/
-/examples/*/plots/
+/examples/csv/
+/examples/plots/
+
+# Stuff from tests
+tests/*/*output*/
