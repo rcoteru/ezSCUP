@@ -322,7 +322,7 @@ class MCSimulationParser:
     def __init__(self, output_folder="output"):
 
         # check if there's an output folder
-        if os.path.exists(os.path.join(os.getcwd(), "output")):
+        if os.path.exists(os.path.join(os.getcwd(), output_folder)):
             
             # first, load the simulation.info file from the output folder
             

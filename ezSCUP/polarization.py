@@ -223,5 +223,59 @@ def layered_polarization(config, born_charges):
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
+def column_polarization(config, born_charges):
 
-        
+    """
+
+    Calculates supercell polarization in the current configuration
+    in vertical (z-axis) columns using the given effective charges.
+
+    Parameters:
+    ----------
+    - born_charges (dict): dictionary with element labels as keys
+    and effective charge 3D vectors as values. (in elemental charge units)
+
+    Return:
+    ----------
+    - a 2D numpy array of 3D vectors with the macroscopic polarization (in C/m2)
+    
+    """
+
+    if not isinstance(config, MCConfiguration):
+        raise ezSCUP.exceptions.InvalidMCConfiguration
+
+    labels = list(born_charges.keys())
+
+    for l in labels:
+        if l not in config.geo.elements:
+            raise ezSCUP.exceptions.InvalidLabel
+
+    
+    cnts = config.geo.lat_constants
+    stra = config.geo.strains
+    ncells_per_column = config.geo.supercell[2]
+
+    ucell_volume = (cnts[0]*(1+stra[0]))*(cnts[1]*(1+stra[1]))*(cnts[2]*(1+stra[2]))
+    volume = ucell_volume*ncells_per_column
+
+
+    pols_by_column = np.zeros((config.geo.supercell[0], config.geo.supercell[1]))
+    for x in range(config.geo.supercell[0]):
+            for y in range(config.geo.supercell[1]):
+
+                pol = np.zeros(3)
+                for z in range(config.geo.supercell[2]):
+
+                    for label in config.geo.elements:
+
+                        tau = config.geo.cells[x,y,z].displacements[label]
+                        charges = born_charges[label]
+                        
+                        for i in range(3):
+                            pol[i] += charges[i]*tau[i]
+
+
+                pol = pol/volume # in e/bohr2
+                pols_by_column[x,y] = unit_conversion(pol)
+
+    return pols_by_column
