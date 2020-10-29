@@ -2,10 +2,6 @@
 Class containing an implementation of the mode-projection algorithm.
 """
 
-__author__ = "Raúl Coterillo"
-__email__  = "raulcote98@gmail.com"
-__status__ = "v2.0"
-
 # third party imports
 import numpy as np
 
@@ -15,7 +11,7 @@ from pathlib import Path
 import os, sys
 
 # package imports
-from ezSCUP.simulations import MCConfiguration
+from ezSCUP.montecarlo import MCConfiguration
 from ezSCUP.generators import RestartGenerator
 from ezSCUP.geometry import Geometry, UnitCell
 

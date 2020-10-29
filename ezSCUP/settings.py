@@ -2,10 +2,6 @@
 General settings for the ezSCUP package.
 """
 
-__author__ = "Raúl Coterillo"
-__email__  = "raulcote98@gmail.com"
-__status__ = "v2.0"
-
 #####################################################################
 ##  EZSCUP SETTINGS
 #####################################################################
@@ -22,12 +18,6 @@ SCUP_EXEC = None
 # default: False
 OVERWRITE = False
 
-# Equilibration steps for MC simulations
-# By default this disabled, but running any simulations
-# without equilibration steps is highly NOT recommended.
-# default: None
-MC_EQUILIBRATION_STEPS = None
-
 # simulation info filename, stores parameter vectors of 
 # the simulation run in the output folder
 SIMULATION_SETUP_FILE = "simulation.info"
@@ -35,37 +25,38 @@ SIMULATION_SETUP_FILE = "simulation.info"
 # regular expression to use when parsing for lattice data
 LT_SEARCH_WORD = "LT:"
 
-# whether to print individual configuration settings, mainly 
-# for debugging purposes
-PRINT_CONF_SETTINGS = False
-
 #####################################################################
-##  FDF SETTINGS
+##  MONTE CARLO FDF DEFAULT SETTINGS
 #####################################################################
 
 # Total steps for MC simulations
-# If None, reads it from the FDF file.
 # FDF setting: "mc_nsweeps"
-# default: None
-MC_STEPS = None
+MC_STEPS = 1000
+
+# Equilibration steps for MC simulations
+# By default this is set to 0, but running any simulations
+# without equilibration steps is highly NOT recommended.
+MC_EQUILIBRATION_STEPS = 0
 
 # Step interval for partial .restart file printing in MC simulations.
-# If None, reads it from the FDF file.
 # FDF setting: "n_write_mc"
-# default: None
-MC_STEP_INTERVAL = None
+MC_STEP_INTERVAL = 20
 
-# Maximum MC jump possible, in Angstrom,
-# If None, reads it from the FDF file.
+# Maximum MC jump possible, in Angstrom.
 # FDF setting: "mc_max_step_d"
-# default: None
-MC_MAX_JUMP = None
+MC_MAX_JUMP = 0.5
+
+# Annealing rate for MC simulations, 
+# set to 1 for constant temperature. 
+# (expected behaviour)
+# FDF setting: "mc_annealing_rate"
+MC_ANNEALING_RATE = 1
+
 
 # Step interval for lattice info in the output.
-# If None, reads it from the FDF file.
 # FDF setting: "print_std_lattice_nsteps"
-# default: None 
-LATTICE_OUTPUT_INTERVAL = None
+LATTICE_OUTPUT_INTERVAL = 50
+
 
 # Whether or not to fix the array componentes. Requires a list of six 
 # boolean values, representing if a component is fixed (True) or 
@@ -74,7 +65,9 @@ LATTICE_OUTPUT_INTERVAL = None
 # For example, the following value fixes the xx, yy and xy components:
 # FIXED_STRAIN_COMPONENTS = [True, True, False, False, False, True]
 # 
-# If None, reads it from the FDF file.
 # FDF setting: "fix_strain_component" [block]
-# default: None
-FIXED_STRAIN_COMPONENTS = None
+# default: [False, False, False, False, False, False]
+FIXED_STRAIN_COMPONENTS = [False, False, False, False, False, False]
+
+
+PRINT_CONF_SETTINGS = False

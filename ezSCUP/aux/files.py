@@ -2,10 +2,6 @@
 Classes to handle writing output data files for external use.
 """
 
-__author__ = "Raúl Coterillo"
-__email__  = "raulcote98@gmail.com"
-__status__ = "v2.0"
-
 # package imports
 import ezSCUP.settings as cfg
 

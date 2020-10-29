@@ -10,7 +10,7 @@ __status__ = "v2.0"
 import numpy as np
 
 # package imports
-from ezSCUP.simulations import MCConfiguration
+from ezSCUP.montecarlo import MCConfiguration
 from ezSCUP.generators import RestartGenerator
 from ezSCUP.geometry import Geometry, UnitCell
 

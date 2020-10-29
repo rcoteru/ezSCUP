@@ -7,10 +7,6 @@ polarization.
 
 """
 
-__author__ = "Raúl Coterillo"
-__email__  = "raulcote98@gmail.com"
-__status__ = "v2.0"
-
 # third party imports
 import numpy as np
 
@@ -20,7 +16,8 @@ from pathlib import Path
 import os, sys
 
 # package imports
-from ezSCUP.simulations import MCConfiguration
+from ezSCUP.montecarlo import MCConfiguration
+from ezSCUP.generators import RestartGenerator
 from ezSCUP.polarization import unit_conversion
 from ezSCUP.projection import ModeAnalyzer
 
@@ -36,6 +33,8 @@ import ezSCUP.exceptions
 # + func perovskite_FE_simple(config, labels, mode="B")
 # + func perovskite_simple_rotation(config, labels)
 # + func perovskite_polarization(config, labels, born_charges)
+#
+# + generate_vortex_geo()
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -54,9 +53,9 @@ def perovskite_AFD(config, labels, mode="a"):
     - mode ("a" or "i"): mode of interest, either in-phase or anti-phase (default).
     
     Return:
-        ----------
-            - three supercell-sized arrays containing the rotation angle in the
-            x, y and z directions of each unit cell (in degrees)
+    ----------
+    - three supercell-sized arrays containing the rotation angle in the
+    x, y and z directions of each unit cell (in degrees)
     
     """
 
@@ -221,9 +220,9 @@ def perovskite_FE_full(config, labels):
     - labels (list): identifiers of the five perovskite atoms [A, B, 0x, Oy, Oz]
     
     Return:
-        ----------
-            - three supercell-sized arrays containing the ferroelectric dispalcements 
-            in the x, y and z directions of each unit cell (in bohr)
+    ----------
+    - three supercell-sized arrays containing the ferroelectric dispalcements 
+    in the x, y and z directions of each unit cell (in bohr)
     
     """
 
@@ -329,9 +328,9 @@ def perovskite_FE_simple(config, labels, mode="B"):
     - mode ("A" or "B"): look at either A-site or B-site (default) displacements.
     
     Return:
-        ----------
-            - three supercell-sized arrays containing the ferroelectric dispalcements 
-            in the x, y and z directions of each unit cell (in bohr)
+    ----------
+    - three supercell-sized arrays containing the ferroelectric dispalcements 
+     in the x, y and z directions of each unit cell (in bohr)
     
     """
 
@@ -410,9 +409,10 @@ def perovskite_simple_rotation(config, labels):
     - labels (list): identifiers of the five perovskite atoms [A, B, 0x, Oy, Oz]
     
     Return:
-        ----------
-            - three supercell-sized arrays containing the rotation angle in the
-            x, y and z directions of each unit cell (in degrees)
+    ----------
+    - three supercell-sized arrays containing the rotation angle in the
+    x, y and z directions of each unit cell (in degrees)
+    
     """
 
     if not isinstance(config, MCConfiguration):
@@ -488,6 +488,7 @@ def perovskite_polarization(config, labels, born_charges):
 
     - born_charges (dict): dictionary with element labels as keys
     and effective charge 3D vectors as values. (in elemental charge units)
+    - labels (list): identifiers of the five perovskite atoms [A, B, 0x, Oy, Oz]
 
     Return:
     ----------
@@ -564,3 +565,86 @@ def perovskite_polarization(config, labels, born_charges):
 
     
     return polx, poly, polz
+
+
+def generate_vortex_geo(supercell, species, labels, disp, region_size):
+
+
+    """
+
+    Generate a rotational AFDa vortex structure in the z direction.
+
+    This geometry consists of alternating regions of compound xy axis
+    rotations of the oxygen octahedra, resulting in the creation of vortexes
+    while projecting the AFDa rotational mode.
+
+    Parameters:
+    ----------
+
+    - supercell (array): supercell shape
+    - species (list): atomic species within the supercell
+    - labels (list): identifiers of the five perovskite atoms [A, B, 0x, Oy, Oz]
+    - disp (real): displacement of the oxygen atoms in the rotation, in bohrs.
+    - region_size (int)
+
+    Return:
+    ----------
+    - a geometry generator (RestartGenerator) of the requested geometry.
+
+    """
+
+
+    gen = RestartGenerator(supercell, species, 5)
+
+    _, _, Ox, Oy, Oz = labels 
+
+    for x in range(supercell[0]):
+        for y in range(supercell[1]):
+            for z in range(supercell[2]):
+
+                factor = (-1)**x * (-1)**y * (-1)**z
+
+                if np.floor(x/region_size)%2 == 0:
+                    if np.floor(y/region_size)%2 == 0:
+                        case = "A"
+                    else:
+                        case = "B"
+                else:
+                    if np.floor(y/region_size)%2 == 0:
+                        case = "C"
+                    else:
+                        case = "D"
+
+                if case == "A":
+                    # rotación x
+                    gen.cells[x,y,z].displacements[Ox][2] -= factor*disp  
+                    gen.cells[x,y,z].displacements[Oz][0] += factor*disp
+                    # rotación y
+                    gen.cells[x,y,z].displacements[Oz][1] += factor*disp 
+                    gen.cells[x,y,z].displacements[Oy][2] -= factor*disp 
+
+                if case == "B":
+                    # rotación x negativa
+                    gen.cells[x,y,z].displacements[Ox][2] += factor*disp  
+                    gen.cells[x,y,z].displacements[Oz][0] -= factor*disp
+                    # rotación y
+                    gen.cells[x,y,z].displacements[Oz][1] += factor*disp 
+                    gen.cells[x,y,z].displacements[Oy][2] -= factor*disp 
+
+                if case == "D":
+                    # rotación x negativa
+                    gen.cells[x,y,z].displacements[Ox][2] += factor*disp  
+                    gen.cells[x,y,z].displacements[Oz][0] -= factor*disp
+                    # rotación y negativa
+                    gen.cells[x,y,z].displacements[Oz][1] -= factor*disp 
+                    gen.cells[x,y,z].displacements[Oy][2] += factor*disp 
+
+                if case == "C":
+                    # rotación x
+                    gen.cells[x,y,z].displacements[Ox][2] -= factor*disp  
+                    gen.cells[x,y,z].displacements[Oz][0] += factor*disp
+                    # rotación y negativa
+                    gen.cells[x,y,z].displacements[Oz][1] -= factor*disp 
+                    gen.cells[x,y,z].displacements[Oy][2] += factor*disp 
+
+    return gen

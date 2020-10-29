@@ -3,10 +3,6 @@ Classes and structures to handle direct interaction with SCALE-UP,
 from FDF settings to launching simulations.
 """
 
-__author__ = "Raúl Coterillo"
-__email__  = "raulcote98@gmail.com"
-__status__ = "v2.0"
-
 # third party imports
 import numpy as np
 
@@ -33,7 +29,12 @@ import ezSCUP.exceptions
 #   - save_as()
 #   - launch()
 #   - print_all()
+# 
+# + class MC_SCUPHandler(SCUPHandler)
+#   - __init__()
 #
+# + class SP_SCUPHandler(SCUPHandler)
+#   - __init__()
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -120,7 +121,7 @@ class SCUPHandler():
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    def __init__(self, scup_exec):
+    def __init__(self, system_name, parameter_file, scup_exec):
 
         """
         SCUPHandler class constructor.
@@ -132,7 +133,10 @@ class SCUPHandler():
         """
 
         self.scup_exec = scup_exec
-        self.settings = None
+        
+        self.settings = {}
+        self.settings["system_name"] = FDFSetting(system_name)
+        self.settings["parameter_file"] = FDFSetting(parameter_file)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -140,7 +144,7 @@ class SCUPHandler():
 
         """
         Loads an SCALE-UP input (.fdf) file, storing its settings for
-        a future simulation.
+        a future simulation. Removes all previous settings in the process.
 
         Parameters:
         ----------
@@ -152,7 +156,6 @@ class SCUPHandler():
 
         # empty the previous settings
         self.settings = {}
-        self.original_settings = {}
 
         f = open(fname, "r")
         flines = f.readlines()
@@ -203,8 +206,6 @@ class SCUPHandler():
                     self.settings[line[0]] = FDFSetting(line[1], unit=line[2])
 
             i += 1
-
-        self.original_settings = deepcopy(self.settings)
         
         pass
 
@@ -223,23 +224,13 @@ class SCUPHandler():
         
         """
 
-        if self.fname == fname:
-            print("WARNING: Attempting to overwite original input. Aborting.")
-            return 0
-
         if len(self.settings) == None:
             print("WARNING: No settings file loaded. Aborting.")
             return 0
 
         f = open(fname, "w")
 
-        if cfg.PRINT_CONF_SETTINGS:
-            print("\nSettings in " + fname + ":")
-
         for k in self.settings:
-
-            if cfg.PRINT_CONF_SETTINGS:
-                print(k, self.settings[k])
 
             if type(self.settings[k]) == FDFSetting:
                 line = k + " " +  str(self.settings[k]) + "\n"
@@ -256,11 +247,8 @@ class SCUPHandler():
                     string += "\n"
 
                 f.write(string)
-                
                 f.write(r"%endblock " + k + "\n")
 
-        if cfg.PRINT_CONF_SETTINGS:
-                print("\n")
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -275,10 +263,6 @@ class SCUPHandler():
 
         """
 
-        if len(self.settings) == 0:
-            print("WARNING: No settings file loaded.")
-            raise ezSCUP.exceptions.InvalidFDFSetting
-
         if not os.path.exists(self.scup_exec):
             print("WARNING: SCUP executable provided does not exist.")
             raise ezSCUP.exceptions.NoSCUPExecutableDetected
@@ -289,19 +273,19 @@ class SCUPHandler():
             output_file = self.settings["System_name"] + ".out"
 
         # create temporary input
-        self.save_as("modinput.fdf")
+        self.save_as("_ezSCUPmoddedinput.fdf")
 
-        command = self.scup_exec + " < modinput.fdf > " + output_file
+        command = self.scup_exec + " < _ezSCUPmoddedinput.fdf > " + output_file
 
         # execute simulation
         os.system(command)
 
         # remove temporary input
-        os.remove("modinput.fdf")
+        os.remove("_ezSCUPmoddedinput.fdf")
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    def print_all(self):
+    def print(self):
 
         """
         Print current FDF settings.
@@ -314,3 +298,99 @@ class SCUPHandler():
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
             
+# ================================================================= #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ================================================================= #
+
+
+class MC_SCUPHandler(SCUPHandler):
+
+
+    def __init__(self, system_name, parameter_file, scup_exec):
+
+        super().__init__(system_name, parameter_file, scup_exec)
+        
+        # general settings
+        self.settings["no_electron"] = FDFSetting(".true.")
+        self.settings["supercell"] = [[1, 1, 1]]
+        self.settings["print_std_lattice_nsteps"] = FDFSetting(cfg.LATTICE_OUTPUT_INTERVAL)
+
+        # MC settings:
+        self.settings["run_mode"] = FDFSetting("monte_carlo")
+        self.settings["mc_strains"] = FDFSetting(".true.")
+
+        self.settings["mc_temperature"] = FDFSetting(10, unit="kelvin")
+        self.settings["mc_annealing_rate"] = FDFSetting(cfg.MC_ANNEALING_RATE)
+
+        self.settings["mc_nsweeps"] = FDFSetting(cfg.MC_STEPS)
+        self.settings["mc_max_step"] = FDFSetting(cfg.MC_MAX_JUMP, unit="ang")
+
+        self.settings["print_justgeo"] = FDFSetting(".true.")
+        self.settings["n_write_mc"] = FDFSetting(cfg.MC_STEP_INTERVAL)
+
+        # strain settings 
+        if len(cfg.FIXED_STRAIN_COMPONENTS) != 6:
+            raise ezSCUP.exceptions.InvalidFDFSetting
+        auxsetting = []
+        for s in list(cfg.FIXED_STRAIN_COMPONENTS):
+            if not isinstance(s, bool):
+                raise ezSCUP.exceptions.InvalidFDFSetting
+            if s:
+                auxsetting.append("T")
+            else:
+                auxsetting.append("F")
+        self.settings["fix_strain_component"] = [auxsetting]
+
+        # output file values
+        self.settings["print_std_energy"] = FDFSetting(".true.")
+        self.settings["print_std_av_energy"] = FDFSetting(".true.")
+        self.settings["print_std_delta_energy"] = FDFSetting(".true.")
+
+        self.settings["print_std_polarization"] = FDFSetting(".true.")
+        self.settings["print_std_av_polarization"] = FDFSetting(".true.")
+
+        self.settings["print_std_strain"] = FDFSetting(".true.")
+        self.settings["Print_std_av_strain"] = FDFSetting(".true.")
+
+        self.settings["print_std_temperature"] = FDFSetting(".true.")
+
+
+        pass
+
+    pass
+
+# ================================================================= #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ================================================================= #
+
+
+class SP_SCUPHandler(SCUPHandler):
+
+
+    def __init__(self, system_name, parameter_file, scup_exec):
+
+        super().__init__(system_name, parameter_file, scup_exec)
+        
+        # general settings
+        self.settings["no_electron"] = FDFSetting(".true.")
+        self.settings["supercell"] = [[1, 1, 1]]
+
+        # SP settings:
+        self.settings["run_mode"] = FDFSetting("single_point")
+
+        # strain settings 
+        if len(cfg.FIXED_STRAIN_COMPONENTS) != 6:
+            raise ezSCUP.exceptions.InvalidFDFSetting
+        auxsetting = []
+        for s in list(cfg.FIXED_STRAIN_COMPONENTS):
+            if not isinstance(s, bool):
+                raise ezSCUP.exceptions.InvalidFDFSetting
+            if s:
+                auxsetting.append("T")
+            else:
+                auxsetting.append("F")
+        self.settings["fix_strain_component"] = [auxsetting]
+
+        pass
+
+    pass

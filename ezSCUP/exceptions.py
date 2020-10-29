@@ -2,10 +2,6 @@
 Exceptions for the ezSCUP package.
 """
 
-__author__ = "Raúl Coterillo"
-__email__  = "raulcote98@gmail.com"
-__status__ = "v2.0"
-
 class Error(Exception):
     """Base class for the exceptions in this package."""
     pass
@@ -18,6 +14,10 @@ class RestartNotMatching(Error):
 
 class NoSCUPExecutableDetected(Error):
    """Raised when attempting to access the output folder when it doesn't exist."""
+   pass
+
+class InvalidParameterFile(Error):
+   """Raised when attempting to load a non-existing parameter file."""
    pass
 
 class MissingSetup(Error):

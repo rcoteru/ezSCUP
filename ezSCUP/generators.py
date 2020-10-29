@@ -1,10 +1,6 @@
 """
-Classes to generate geometry (.restart) and simulation (simulation.info) files.
+Classes to manipulate geometry (.restart) and simulation (simulation.info) files.
 """
-
-__author__ = "Raúl Coterillo"
-__email__  = "raulcote98@gmail.com"
-__status__ = "v2.0"
 
 # third party imports
 import numpy as np          # matrix support

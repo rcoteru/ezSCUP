@@ -1,15 +1,11 @@
 """
-Collection of classes to mass-execute SCALE-UP simulations.
+Collection of classes to mass-execute SCALE-UP Monte Carlo simulations.
 
-Classes to execute SCALE-UP simulations in a range of 
+Classes to execute SCALE-UP Monte Carlo simulations in a range of 
 temperature, strain, stress and electric field settings 
 with ease. Each simulation class comes with a parser that 
 automates the process of dealing with the output data.
 """
-
-__author__ = "Raúl Coterillo"
-__email__  = "raulcote98@gmail.com"
-__status__ = "v2.0"
 
 # third party imports
 import numpy as np          # matrix support
@@ -25,7 +21,7 @@ import time                         # check simulation run time
 import re                           # regular expressions
 
 # package imports
-from ezSCUP.handlers import SCUPHandler, FDFSetting
+from ezSCUP.handlers import MC_SCUPHandler, FDFSetting
 from ezSCUP.generators import RestartGenerator
 from ezSCUP.geometry import Geometry
 
@@ -521,7 +517,8 @@ class MCSimulation:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def setup(
-        self, fdf, supercell, species, nats, 
+        self, system_name, parameter_file,
+        supercell, species, nats, 
         temp, stress=None, strain=None, field=None, 
         output_folder="output" 
         ):
@@ -563,9 +560,9 @@ class MCSimulation:
 
             raise ezSCUP.exceptions.NoSCUPExecutableDetected
 
-        self.fdf = fdf # load the main fdf file
-        self.sim = SCUPHandler(scup_exec=cfg.SCUP_EXEC)
-        self.sim.load(self.fdf)
+        self.name = system_name
+        self.parameter_file = parameter_file
+        self.sim = MC_SCUPHandler(self.name, self.parameter_file, cfg.SCUP_EXEC)
 
         self.supercell = supercell
         self.species = species
@@ -621,50 +618,18 @@ class MCSimulation:
                 return 0
 
         # adjust the supercell as needed
-        if self.supercell != None:
-            self.sim.settings["supercell"] = [list(self.supercell)]
-        else:
-            self.supercell = self.sim.settings["supercell"]
+        self.sim.settings["supercell"] = [list(self.supercell)]
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         # modify FDF settings according to ezSCUP.settings
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-        if cfg.MC_STEPS != None: # number of total MC steps
-            self.sim.settings["mc_nsweeps"].value = int(cfg.MC_STEPS)
-            self.mc_steps = int(cfg.MC_STEPS)
-        else:
-            self.mc_steps = self.sim.settings["mc_nsweeps"].value
-
-        if cfg.MC_STEP_INTERVAL != None: # interval between partials
-            self.sim.settings["n_write_mc"].value = int(cfg.MC_STEP_INTERVAL)
-            self.mc_step_interval = int(cfg.MC_STEP_INTERVAL)
-        else:
-            self.mc_step_interval = self.sim.settings["n_write_mc"].value
-
-        if cfg.MC_MAX_JUMP != None: # max jump distance 
-            self.sim.settings["mc_max_step_d"].value = float(cfg.MC_MAX_JUMP)
-            self.mc_max_jump = float(cfg.MC_MAX_JUMP)
-        else:
-            self.mc_max_jump = self.sim.settings["mc_max_step_d"].value
-
-        if cfg.LATTICE_OUTPUT_INTERVAL != None:
-            self.sim.settings["print_std_lattice_nsteps"].value = int(cfg.LATTICE_OUTPUT_INTERVAL)
-            self.lat_output_interval = int(cfg.LATTICE_OUTPUT_INTERVAL)
-        else:
-            self.lat_output_interval = self.sim.settings["print_std_lattice_nsteps"].value
         
-        if cfg.FIXED_STRAIN_COMPONENTS != None:
-            if len(cfg.FIXED_STRAIN_COMPONENTS) != 6:
-                raise ezSCUP.exceptions.InvalidFDFSetting
-            setting = []
-            for s in list(cfg.FIXED_STRAIN_COMPONENTS):
-                if not isinstance(s, bool):
-                    raise ezSCUP.exceptions.InvalidFDFSetting
-                if s:
-                    setting.append("T")
-                else:
-                    setting.append("F")
-            self.sim.settings["fix_strain_component"] = [setting]
+        self.mc_steps = int(cfg.MC_STEPS)
+        self.mc_step_interval = int(cfg.MC_STEP_INTERVAL)
+        self.mc_max_jump = float(cfg.MC_MAX_JUMP)
+        self.lat_output_interval = int(cfg.LATTICE_OUTPUT_INTERVAL)
+        self.fixed_strain_components = cfg.FIXED_STRAIN_COMPONENTS
+        
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
         # setup estart file generator
@@ -673,17 +638,15 @@ class MCSimulation:
         # print common simulation settings
         if cfg.PRINT_CONF_SETTINGS:
             print("Starting FDF settings:")
-            self.sim.print_all()
+            self.sim.print()
             print("")
 
-        # load simulation name
-        self.name = self.sim.settings["system_name"].value
-        
         # save simulation setup file 
         print("Saving simulation setup file... ")
 
         setup = {
             "name": self.name,
+            "parameter_file": self.parameter_file,
             "supercell": self.supercell,
             "species": self.species,
             "nats": self.nats,
@@ -697,7 +660,7 @@ class MCSimulation:
             "mc_max_jump": self.mc_max_jump,
             "lat_output_interval": self.lat_output_interval,
 
-            "fixed_strain_components": cfg.FIXED_STRAIN_COMPONENTS,
+            "fixed_strain_components": self.fixed_strain_components,
             }
 
         simulation_setup_file = os.path.join(self.main_output_folder, cfg.SIMULATION_SETUP_FILE)
@@ -708,7 +671,7 @@ class MCSimulation:
         print("\nSimulation run has been properly configured.")
         print("You may now proceed to launch it.")
 
-        self.SETUP = True # simulation run properly setup
+        self.SETUP = True # simulation run setup nicely
 
         pass
 
