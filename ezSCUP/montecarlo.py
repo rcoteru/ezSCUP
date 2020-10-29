@@ -194,28 +194,34 @@ class MCConfiguration:
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         # get partials, number of MC steps, etc
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
         # partial .restart files
         partials = [k for k in os.listdir(folder) if 'partial' in k]
         partials = sorted([k for k in partials if '.restart' in k])
         self.partials = [os.path.join(self.folder_path, p) for p in partials]
+
         # get total number of MC steps
         self.total_steps = max([int(p[len(base_sim_name)+10:-8]) for p in partials])
         self.step_threshold = cfg.MC_EQUILIBRATION_STEPS 
+
         # check if any measurements are taken into consideration
         if (self.total_steps <= self.step_threshold):
             print("Step threshold {:d} greater than total steps ({:d}):".format(self.step_threshold, self.total_steps))
             print(r"Reducing to 20% of total steps.")
             self.step_threshold = int(0.2*self.total_steps)
+
         # selects only partials above self.step_threshold steps
         step_filter = [int(p[len(base_sim_name)+10:-8]) > self.step_threshold for p in partials]
         partials = [p for i, p in enumerate(partials) if step_filter[i]]
         self.partials = [os.path.join(self.folder_path, p) for p in partials]
+
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
         reference_file = os.path.join(folder, base_sim_name + "_FINAL.REF")
+        restart_file = os.path.join(folder, base_sim_name + "_EQUILIBRIUM.restart")
 
         self.geo = Geometry(reference_file)
-        self.geo.load_equilibrium_displacements(self.partials)
+        self.geo.load_restart(restart_file)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         
@@ -677,6 +683,29 @@ class MCSimulation:
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
+    def find_partials(self, folder, sim_name):
+
+        partials = [k for k in os.listdir(folder) if 'partial' in k]
+        partials = sorted([k for k in partials if '.restart' in k])
+        partials = [os.path.join(folder, p) for p in partials]
+
+        total_steps = max([int(p[len(sim_name)+10:-8]) for p in partials])
+        step_threshold = cfg.MC_EQUILIBRATION_STEPS 
+
+        if (total_steps <= step_threshold):
+            print("Step threshold {:d} greater than total steps ({:d}):".format(step_threshold, total_steps))
+            print(r"Reducing to 20% of total steps.")
+            step_threshold = int(0.2*total_steps)
+
+        step_filter = [int(p[len(sim_name)+10:-8]) > step_threshold for p in partials]
+        partials = [p for i, p in enumerate(partials) if step_filter[i]]
+        partials = [os.path.join(folder, p) for p in partials]
+
+        return partials
+
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
     def change_output_folder(self, new_output_folder):
 
         # get the current path
@@ -876,6 +905,16 @@ class MCSimulation:
                         conf_time = conf_finish_time-conf_start_time
 
                         print("\nConfiguration finished! (time elapsed: {:.3f}s)".format(conf_time))
+
+                        # calculate equilibrium geometry
+                        print("Calculation equilibrium geometry...")
+                        partials = self.find_partials(configuration_folder, sim_name)
+                        reference_file = os.path.join(configuration_folder, sim_name + "_FINAL.REF")
+                        
+                        aux_geo = Geometry(reference_file)
+                        aux_geo.load_equilibrium_displacements(partials)
+                        aux_geo.write_restart(os.path.join(configuration_folder, sim_name + "_EQUILIBRIUM.restart"))
+
                         print("All files stored in output/" + subfolder_name + " succesfully.\n")
 
         self.generator.reset()
@@ -1030,6 +1069,16 @@ class MCSimulation:
                         conf_time = conf_finish_time-conf_start_time
 
                         print("\nConfiguration finished! (time elapsed: {:.3f}s)".format(conf_time))
+                        
+                        # calculate equilibrium geometry
+                        print("Calculation equilibrium geometry...")
+                        partials = self.find_partials(configuration_folder, sim_name)
+                        reference_file = os.path.join(configuration_folder, sim_name + "_FINAL.REF")
+                        
+                        aux_geo = Geometry(reference_file)
+                        aux_geo.load_equilibrium_displacements(partials)
+                        aux_geo.write_restart(os.path.join(configuration_folder, sim_name + "_EQUILIBRIUM.restart"))
+
                         print("All files stored in output/" + subfolder_name + " succesfully.\n")
 
 

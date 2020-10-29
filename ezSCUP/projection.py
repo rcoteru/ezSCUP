@@ -127,19 +127,6 @@ class ModeAnalyzer():
 
         # TODO think this one out
 
-        if not isinstance(config, MCConfiguration):
-            raise ezSCUP.exceptions.InvalidMCConfiguration()
-
-        if values == None:
-            values = self.measure(config, pattern)
-
-        RestartGenerator(config.supercell, config.species, config.nats)
-
-        for x in range(self.config.supercell[0]):
-            for y in range(self.config.supercell[1]):
-                for z in range(self.config.supercell[2]):
-                    pass
-
         pass
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #

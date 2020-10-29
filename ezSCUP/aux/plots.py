@@ -1,3 +1,6 @@
+
+import matplotlib.pyplot as plt
+
 def plot_vector_map(name, u, v):
 
     plt.figure(name, figsize=[6,6])

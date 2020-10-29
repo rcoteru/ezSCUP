@@ -2,10 +2,6 @@
 Classes and data structures to handle SCALE-UP geometry files.
 """
 
-__author__ = "Raúl Coterillo"
-__email__  = "raulcote98@gmail.com"
-__status__ = "v2.0"
-
 # third party imports
 import numpy as np
 import csv
@@ -198,11 +194,6 @@ class Geometry():
         - fname  (string): name of the .restart file
 
         """
-
-
-        #########
-        # CHECK FILE EXISTS
-        #########
 
         f = open(reference_file)
 
