@@ -2,17 +2,6 @@
 
 Test script for the mode-projection and polarization algorithms:
 
-PROJECTIONS:
-- simple rotation
-- AFDa/AFDi rotation
-- full-FE/simple-FE displacement
-
-POLARIZATION:
-- supercell-wide polarization
-- layered polarization
-- stepped polarization
-- unit-cell polarization
-
 """
 
 __author__ = "Raúl Coterillo"
@@ -30,10 +19,12 @@ import time
 # third party imports
 import matplotlib.pyplot as plt
 import numpy as np
+import pickle
 
 # ezSCUP imports
-from ezSCUP.singlepoint import SPSimulation
-from ezSCUP.perovskite import generate_vortex_geo
+from ezSCUP.singlepoint import SPRun
+from ezSCUP.geometry import Geometry
+from ezSCUP.normodes import finite_hessian
 import ezSCUP.settings as cfg
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -46,8 +37,9 @@ cfg.SCUP_EXEC = "/home/raul/Software/scale-up-1.0.0/build_dir/src/scaleup.x"
 # ~~~~~~~~~~~~~~~~~~~~~ SIMULATION SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-SUPERCELL = [4,4,2]                         # shape of the supercell
+SUPERCELL = [1,1,1]                         # shape of the supercell
 SPECIES = ["Sr", "Ti", "O"]                 # elements in the lattice
+MASSES = [87.6, 47.9, 16, 16, 16]           # masses, in atomic units 
 LABELS = [0, 1, 4, 3, 2]                    # [A, B, 0x, Oy, Oz]
 NATS = 5                                    # number of atoms per cell
 
@@ -55,14 +47,37 @@ NATS = 5                                    # number of atoms per cell
 # ~~~~~~~~~~~~~~~~~~~~~~~ code starts here ~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-sim = SPSimulation()
-sim.setup("test", "srtio3_full_lat.xml", SUPERCELL)
+run = False
+geo = Geometry(SUPERCELL, SPECIES, NATS)
 
-angle = 4
-BOdist = 3.632794
-disp = BOdist*np.tan(angle*np.pi/180.)
+if run == True:
+    hessian = finite_hessian("srtio3_full_lat.xml", geo, MASSES)
+    with open("hessian.pickle", "wb") as f:
+                pickle.dump(hessian, f)
+else:
+    with open("hessian.pickle", "rb") as f:
+                hessian = pickle.load(f) 
 
-gen = generate_vortex_geo(SUPERCELL, SPECIES, LABELS, disp, 2)
-sim.run(gen)
+#for i in range(NATS*3):
+#    for j in range(NATS*3):
+#        s1 = int(np.floor((i/NATS)))
+#        s2 = int(np.floor((j/NATS)))
+#        hessian[i,j] = hessian[i,j]*np.sqrt(MASSES[s1])*np.sqrt(MASSES[s2])
 
-print(sim.energy)
+def normalize(vec):
+    return vec/np.linalg.norm(vec)
+
+np.set_printoptions(suppress=True, precision=2)
+w, v = np.linalg.eig(hessian)
+
+for i, val in enumerate(w):
+    v[:,i] = normalize(v[:,i])
+    print("Mode #" + str(i) + " -> Eigenvalue:" + str(val))
+    print("Sr: " + str(v[0:3,i]))
+    print("Ti: " + str(v[3:6,i]))
+    print("Ox: " + str(v[12:15,i]))
+    print("Oy: " + str(v[9:12,i]))
+    print("Oz: " + str(v[6:9,i]))
+    print("------------------------------------\n")
+    
+    

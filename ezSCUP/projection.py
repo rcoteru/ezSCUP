@@ -11,9 +11,7 @@ from pathlib import Path
 import os, sys
 
 # package imports
-from ezSCUP.montecarlo import MCConfiguration
-from ezSCUP.generators import RestartGenerator
-from ezSCUP.geometry import Geometry, UnitCell
+from ezSCUP.geometry import Geometry
 
 import ezSCUP.settings as cfg
 import ezSCUP.exceptions
@@ -24,7 +22,7 @@ import ezSCUP.exceptions
 #
 # + class ModeAnalyzer()
 #   - measure(config, pattern)
-#   - restore() # TODO
+#   - restore() # TODO, is this even possible?
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -62,16 +60,13 @@ class ModeAnalyzer():
     Attributes:
     ----------
     
-     - config (MCConfiguration): loaded configuration.
-
-     - variable (array): last projected pattern.
-    
     """
 
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    def measure(self, config, pattern):
+    @classmethod
+    def measure(self, geom, pattern):
 
         """
 
@@ -89,34 +84,24 @@ class ModeAnalyzer():
         
         """
 
-        if not isinstance(config, MCConfiguration):
+        if not isinstance(geom, Geometry):
             raise ezSCUP.exceptions.InvalidMCConfiguration()
 
-        self.config = config
-        self.pattern = pattern
+        values = np.zeros(geom.supercell)
 
-        values = np.zeros(self.config.geo.supercell)
-
-        for x in range(self.config.geo.supercell[0]):
-            for y in range(self.config.geo.supercell[1]):
-                for z in range(self.config.geo.supercell[2]):
-
+        for x in range(geom.supercell[0]):
+            for y in range(geom.supercell[1]):
+                for z in range(geom.supercell[2]):
                     cell = np.array([x,y,z])
-
-                    for atom in self.pattern:
-
-                        atom_cell = np.mod(cell + atom[1], self.config.geo.supercell)
-
+                    for atom in pattern:
+                        atom_cell = np.mod(cell + atom[1], geom.supercell)
                         nx, ny, nz = atom_cell
-
-                        values[x,y,z] += atom[2]*np.dot(atom[3], 
-                            self.config.geo.cells[nx,ny,nz].displacements[atom[0]])
-
-        self.values = values
+                        values[x,y,z] += atom[2]*np.dot(atom[3], geom.displacements[nx,ny,nz,atom[0],:])
         return values
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
+    @classmethod
     def restore(self, config, pattern, values=None):
 
         """

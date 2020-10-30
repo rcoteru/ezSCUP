@@ -1,5 +1,5 @@
 """
-Classes and data structures to handle SCALE-UP geometry files.
+Class that provides a data structure to handle SCALE-UP geometry files.
 """
 
 # third party imports
@@ -14,13 +14,9 @@ import ezSCUP.exceptions
 # MODULE STRUCTURE
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 #
-# + class UnitCell()
-#   - __init__(sc_pos, elements, positions, displacements)
-#   - print_atom_pos()
-#   - print_atom_disp()
-#
 # + class Geometry()
-#   - __init__(reference_file)
+#   - __init__(supercell, species, nats)
+#   - load_reference(reference_file)
 #   - load_restart(restart_file)
 #   - load_equilibrium_displacements(partials)
 #   - write_restart(restart_file)
@@ -28,104 +24,23 @@ import ezSCUP.exceptions
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-class UnitCell:
-
-    """ 
-
-    Basic container for individual unit cell data.
-
-    # BASIC USAGE # 
-
-    Stores the basic information regarding a given unit cell,
-    namely the labels, positions and displacements of its atoms.
-
-    Positions and displacements are stored as Python dictionaries,
-    with the keys being the elements name and the value being 
-    numpy [3x1] arrays. 
-
-    Attributes:
-    ----------
-
-    - nats (int): number of atoms per unit cell
-    - sc_pos (array): position of the cell within the supercell
-    - elements (list): labels for the atoms within the cells
-    - positions (dict): dictionary with atomic positions
-    - displacements (disct): dictionary with atomic displacements
-
-    """
- 
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-    def __init__(self, sc_pos, elements, positions=None, displacements=None):
-
-        """
-        UnitCell class constructor. 
-
-        Parameters:
-        ----------
-
-        - sc_pos  (list): position of the cell within the supercell
-        - elements (list): element labels, used in the dictionaries.
-
-        - positions (dict): dictionary with element labels as keys
-            and [3x1] numpy arrays as values. Contains the reference
-            positions of the atoms.
-        
-        - displacements (dict): dictionary with element labels as keys
-            and [3x1] numpy arrays as values. Contains the displacements 
-            of the atoms from their reference positions.
-
-        """
-
-        self.nats = len(elements)
-        self.elements = elements
-        self.sc_pos = sc_pos
-        self.positions = positions
-        self.displacements = displacements
-
-        pass
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-    def __str__(self):
-        return "Cell at " + str(self.sc_pos) +  " with " +  str(self.nats) + " atoms."
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-    def print_atom_pos(self):
-
-        """Print atomic position information, if available."""
-
-        if self.positions == None:
-            print("No position info available.")
-        else:
-            for atom in self.positions:
-                print(atom + str(self.positions[atom]))
-        
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-    def print_atom_disp(self):
-
-        """Print atomic displacement information, if available."""
-
-        if self.displacements == None:
-            print("No displacement info available.")
-        else:
-            for atom in self.displacements:
-                print(atom + str(self.displacements[atom]))
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-# ================================================================= #
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-# ================================================================= #
-
 class Geometry():
 
     """
     Geometry container
 
     # BASIC USAGE # 
+
+    On creation, the class asks for a supercell shape (ie. [4,4,4]),
+    the atomic species in each cell (ie. ["Sr", "Ti", "O"]) and the 
+    number of atoms per unit cell (ie. 5). It then creates a cell
+    structure within the self.cells attribute, containing displacements
+    from an unspecified reference structure (they are all zero on creation).
+    This attribute may be modified via external access in order to obtain 
+    the desired structure.
+
+    The self.read() and self.write() methods provide ways to respectively 
+    load and create .restart geometry files for SCALE-UP using this information.
     
     Reads geometry data from a given configuration's .REF file,
     yielding access to its contents through a cell structure within
@@ -138,29 +53,16 @@ class Geometry():
     number of cells, elements, number of atoms per cell, lattice
     constants and cell information are accessible via attributes.
 
-    # ELEMENT LABELING #
-
-    By default, SCALE-UP does not label elements in the output beside a 
-    non-descript number. This programs assigns a label to every atom in
-    order to easily access their data from dictionaries.
-
-    Suppose you have an SrTiO3 cell, only three elements but five atoms.
-    Then the corresponding labels would be ["Sr","Ti","O1","O2","O3"].
-
     # ACCESSING INDIVIDUAL CELL DATA #
 
-    In order to access cell data after loading a file just access the "cells" 
-    attribute in the following manner:
+    In order to access the data after loading a file just access either 
+    the "positions" or "displacements" attributes in the following manner:
 
-        parser = REFParser()                            # instantiate the class
-        parser.load("example.REF")                      # load the target file
-        desired_cell = parser.cells[x,y,z]              # access the desired cell
-        desired_cell.positions["element_label"]         # access its position data by label
-        desired_cell.displacements["element_label"]     # access its displacement data by label
-
-    where x, y and z is the position of the desired cell in the supercell.
-
-    More on the UnitCell class at the beginning of this module.
+        geo = Geometry(...)                             # instantiate the class
+        geo.load_reference("example.REF")               # load a .REF file
+        geo.load_reference("example.restart")           # load a .restart file
+        geo.positions[x,y,z,j,:]                        # position vector of atom j in cell (x,y,z)
+        desired_cell.displacements["element_label"]     # displacement vector of atom j in cell (x,y,z)
 
     Attributes:
     ----------
@@ -174,76 +76,44 @@ class Geometry():
      - strains (array): supercell strains, in Voigt notation
      - lat_vectors (1x9 array): lattice vectors, in Bohrs 
      - lat_constants (array): xx, yy, zz lattice constants, in Bohrs
-     - cells (array): array of UnitCell objects (ezSCUP.geometry.UnitCell)
-     containing the geometry information.
+     - positions (array): positions of the atoms in the supercell, in Bohrs
+     - displacements (array): displacements of the atoms in the supercell, in Bohrs
 
     """
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    def __init__(self, reference_file):
+    def __init__(self, supercell, species, nats):
 
         
         """
         
-        Loads the given .REF file.
+        Geometry class constructor.
 
         Parameters:
         ----------
 
-        - fname  (string): name of the .restart file
+        - supercell (array): supercell shape (ie. [4,4,4])
+        - species (list): atomic species within the supercell 
+        (ie. ["Sr", "Ti", "O"])
+        - - nats (int): number of atoms per unit cell (ie. 5)
 
         """
 
-        f = open(reference_file)
-
-        self.supercell = np.array(list(map(int, f.readline().split())))
+        self.supercell = np.array(supercell)
         self.ncells = int(self.supercell[0]*self.supercell[1]*self.supercell[2])
-        self.nats, self.nels = list(map(int, f.readline().split()))
-        self.species = f.readline().split()
-        self.elements = self.species.copy()
+        self.species = species
+        self.nels = len(self.species)
+        self.nats = nats
 
-        # adjust final element names
-        if self.nats != self.nels:
-            for i in range(self.nats-self.nels):
-                self.elements.append(self.elements[self.nels-1]+str(2+i))
-            self.elements[self.nels-1] = self.elements[self.nels-1]+str(1)
-
-        # read lattice constants
-        self.lat_vectors = np.array(list(map(float, f.readline().split())))
-        self.lat_constants = np.array([self.lat_vectors[0],self.lat_vectors[4], self.lat_vectors[8]])
-        for i in range(self.lat_constants.size): # normalize with supercell size
-            self.lat_constants[i] = self.lat_constants[i]/self.supercell[i]
-
-        # create strain placeholder
         self.strains = np.zeros(6)
 
-        # generate cell structure: a UnitCell array
-        self.cells = np.zeros(list(self.supercell), dtype="object")
-        
-        #read reference atomic positions
-        for _ in range(self.ncells): # read all unit cells
+        self.lat_vectors = None
+        self.lat_constants = None
 
-            sc_pos = []     # current cell in the supercell
-            atom_pos = {}   # current cell's atomic positions
-            atom_disp = {}  # current cell's atomic displacements
-
-            for j in range(self.nats): # read all atoms within the cell
-
-                line = f.readline().split()
-                sc_pos = list(map(int, line[0:3]))
-                atom_pos[self.elements[j]] = np.array(list(map(float, line[5:])))
-                atom_disp[self.elements[j]] = np.array([0.,0.,0.])
-
-            # store the position in the cell structure
-            self.cells[sc_pos[0], sc_pos[1], sc_pos[2]] = UnitCell(
-                sc_pos, 
-                self.elements, 
-                positions=atom_pos, 
-                displacements=atom_disp
-                )
-
-        f.close()
+        self.positions = None
+        sc = self.supercell
+        self.displacements = np.zeros([sc[0], sc[1], sc[2], self.nats, 3])
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -254,16 +124,10 @@ class Geometry():
         """
 
         self.strains = np.zeros(6)
+        sc = self.supercell
+        self.displacements = np.zeros([sc[0], sc[1], sc[2], self.nats, 3])
 
-        for x in range(self.supercell[0]):
-            for y in range(self.supercell[1]):
-                for z in range(self.supercell[2]):
-
-                    for atom in self.cells[x,y,z].elements:
-                        self.cells[x,y,z].displacements[atom] = np.zeros(3)
-
-        pass
-
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def load_restart(self, restart_file):
 
@@ -276,7 +140,7 @@ class Geometry():
 
         - restart_file (string): name of the .restart file
 
-        raises: ezSCUP.exceptions.RestartNotMatching if the geometry contained
+        raises: ezSCUP.exceptions.GeometryNotMatching if the geometry contained
         in the .restart file does not match the one loaded from the reference file.
 
         """
@@ -288,34 +152,81 @@ class Geometry():
         # checks restart file matches loaded geometry
         rsupercell = np.array(list(map(int, f.readline().split())))
         if not np.all(self.supercell == rsupercell): 
-            raise ezSCUP.exceptions.RestartNotMatching()
+            raise ezSCUP.exceptions.GeometryNotMatching()
 
         rnats, rnels = list(map(int, f.readline().split()))
         if (rnats != self.nats) or (rnels != self.nels):
-            raise ezSCUP.exceptions.RestartNotMatching()
+            raise ezSCUP.exceptions.GeometryNotMatching()
 
         rspecies = f.readline().split()
         if not (set(rspecies) == set(self.species)):
-            raise ezSCUP.exceptions.RestartNotMatching()
+            raise ezSCUP.exceptions.GeometryNotMatching()
 
         # read strains 
         self.strains = np.array(list(map(float, f.readline().split())))
 
-        # read atom displacements
-        for _ in range(self.ncells): # read all unit cells
+        #read displacements
+        for x in range(self.supercell[0]):
+            for y in range(self.supercell[1]):
+                for z in range(self.supercell[2]):
+                    # read all atoms within the cell
+                    for j in range(self.nats): 
+                        line = f.readline().split()
+                        self.displacements[x,y,z,j,:] = np.array(list(map(float, line[5:])))
 
-            sc_pos = []     # current cell in the supercell
-            atom_disp = {}  # current cell's atomic displacements
-
-            for j in range(self.nats): # read all atoms
-
-                line = f.readline().split()
-                sc_pos = list(map(int, line[0:3]))
-                atom_disp[self.elements[j]] = np.array(list(map(float, line[5:])))
-
-            self.cells[sc_pos[0], sc_pos[1], sc_pos[2]].displacements=atom_disp
- 
         f.close()
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def load_reference(self, reference_file):
+
+        """
+        
+        Loads the given .REF file's information.
+
+        Parameters:
+        ----------
+
+        - reference_file (string): name of the .REF file
+
+        raises: ezSCUP.exceptions.GeometryNotMatching if the geometry contained
+        in the .restart file does not match the one loaded from the reference file.
+
+        """
+
+        f = open(reference_file)
+
+        # checks restart file matches loaded geometry
+        rsupercell = np.array(list(map(int, f.readline().split())))
+        if not np.all(self.supercell == rsupercell): 
+            raise ezSCUP.exceptions.GeometryNotMatching()
+
+        rnats, rnels = list(map(int, f.readline().split()))
+        if (rnats != self.nats) or (rnels != self.nels):
+            raise ezSCUP.exceptions.GeometryNotMatching()
+
+        rspecies = f.readline().split()
+        if not (set(rspecies) == set(self.species)):
+            raise ezSCUP.exceptions.GeometryNotMatching()
+
+        # read lattice vectors
+        self.lat_vectors = np.array(list(map(float, f.readline().split())))
+        self.lat_constants = np.array([self.lat_vectors[0],self.lat_vectors[4], self.lat_vectors[8]])
+        for i in range(self.lat_constants.size): # normalize with supercell size
+            self.lat_constants[i] = self.lat_constants[i]/self.supercell[i]
+
+        # generate positions array
+        sc = self.supercell
+        self.positions = np.zeros([sc[0], sc[1], sc[2], self.nats, 3])
+        
+        #read reference atomic positions
+        for x in range(self.supercell[0]):
+            for y in range(self.supercell[1]):
+                for z in range(self.supercell[2]):
+                    # read all atoms within the cell
+                    for j in range(self.nats): 
+                        line = f.readline().split()
+                        self.positions[x,y,z,j,:] = np.array(list(map(float, line[5:])))
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -340,6 +251,9 @@ class Geometry():
 
         npartials = len(partials)
 
+        if npartials == 0:
+            raise ezSCUP.exceptions.NotEnoughPartials()
+
         for p in partials: # iterate over all partial .restarts
 
             f = open(p)
@@ -347,30 +261,27 @@ class Geometry():
             # checks restart file matches loaded geometry
             rsupercell = np.array(list(map(int, f.readline().split())))
             if not np.all(self.supercell == rsupercell): 
-                raise ezSCUP.exceptions.RestartNotMatching()
+                raise ezSCUP.exceptions.GeometryNotMatching()
 
             rnats, rnels = list(map(int, f.readline().split()))
             if (rnats != self.nats) or (rnels != self.nels):
-                raise ezSCUP.exceptions.RestartNotMatching()
+                raise ezSCUP.exceptions.GeometryNotMatching()
 
             rspecies = f.readline().split()
             if not (set(rspecies) == set(self.species)):
-                raise ezSCUP.exceptions.RestartNotMatching()
+                raise ezSCUP.exceptions.GeometryNotMatching()
 
             # add strain contributions
             self.strains += np.array(list(map(float, f.readline().split())))/npartials
 
-            # add displacements contribution
-            for _ in range(self.ncells): # read all unit cells
-
-                sc_pos = []     # current cell in the supercell
-
-                for j in range(self.nats): # read all atoms
-
-                    line = f.readline().split()
-                    sc_pos = list(map(int, line[0:3]))
-            
-                    self.cells[sc_pos[0], sc_pos[1], sc_pos[2]].displacements[self.elements[j]] += np.array(list(map(float, line[5:])))/npartials
+            #read displacements
+            for x in range(self.supercell[0]):
+                for y in range(self.supercell[1]):
+                    for z in range(self.supercell[2]):
+                        # read all atoms within the cell
+                        for j in range(self.nats): 
+                            line = f.readline().split()
+                            self.displacements[x,y,z,j,:] += np.array(list(map(float, line[5:])))/npartials
     
             f.close()
 
@@ -407,21 +318,18 @@ class Geometry():
         for x in range(self.supercell[0]):
             for y in range(self.supercell[1]):
                 for z in range(self.supercell[2]):
- 
-                    cell = self.cells[x,y,z]
-    
-                    for i in range(self.nats):
+                    for j in range(self.nats):
                         
-                        line = [x, y ,z, i+1]
+                        line = [x, y ,z, j+1]
 
-                        if i+1 > self.nels:
+                        if j+1 > self.nels:
                             species = self.nels
                         else:
-                            species = i+1
+                            species = j+1
                         
                         line.append(species)
 
-                        disps = list(cell.displacements[self.elements[i]])
+                        disps = list(self.displacements[x,y,z,j,:])
                         disps = ["{:.8E}".format(d) for d in disps]
 
                         line = line + disps
@@ -439,10 +347,13 @@ class Geometry():
         Parameters:
         ----------
 
-        - restart_file (string): .REF geometry file where to write everything.
+        - reference_file (string): .REF geometry file where to write everything.
         WARNING: the file will be overwritten.
 
         """
+
+        if self.positions == None: 
+            raise ezSCUP.exceptions.PositionsNotLoaded()
 
         f = open(reference_file, 'wt')
         tsv = csv.writer(f, delimiter="\t")
@@ -461,21 +372,19 @@ class Geometry():
         for x in range(self.supercell[0]):
             for y in range(self.supercell[1]):
                 for z in range(self.supercell[2]):
- 
-                    cell = self.cells[x,y,z]
     
-                    for i in range(self.nats):
+                    for j in range(self.nats):
                         
-                        line = [x, y ,z, i+1]
+                        line = [x, y ,z, j+1]
 
-                        if i+1 > self.nels:
+                        if j+1 > self.nels:
                             species = self.nels
                         else:
-                            species = i+1
+                            species = j+1
                         
                         line.append(species)
 
-                        disps = list(cell.positions[self.elements[i]])
+                        disps = list(self.positions[x,y,z,j,:])
                         disps = ["{:.8E}".format(d) for d in disps]
 
                         line = line + disps
@@ -484,3 +393,6 @@ class Geometry():
         
         f.close()
 
+# ================================================================= #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ================================================================= #

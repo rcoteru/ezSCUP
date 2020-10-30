@@ -27,8 +27,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # ezSCUP imports
-from ezSCUP.simulations import MCSimulation, MCSimulationParser
-from ezSCUP.generators import RestartGenerator
+from ezSCUP.montecarlo import MCSimulation, MCSimulationParser
+from ezSCUP.geometry import Geometry
 import ezSCUP.settings as cfg
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -43,7 +43,7 @@ cfg.SCUP_EXEC = "/home/raul/Software/scale-up-1.0.0/build_dir/src/scaleup.x"
 
 SUPERCELL = [2,2,2]                         # shape of the supercell
 SPECIES = ["Sr", "Ti", "O"]                 # elements in the lattice
-LABELS = ["Sr", "Ti", "O3", "O2", "O1"]     # [A, B, 0x, Oy, Oz]
+LABELS = [0, 1, 4, 3, 2]                    # [A, B, 0x, Oy, Oz]
 NATS = 5                                    # number of atoms per cell
 
 TEMPERATURES = np.linspace(20, 100, 2)      # temperatures to simulate
@@ -75,35 +75,37 @@ cfg.OVERWRITE = True                         # whether to overwrite previous out
 # ~~~~~~~~~~~~~~~~~~~~~~~ code starts here ~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-if __name__ == "__main__":
+sim = MCSimulation()
+sim.setup(
+    "srtio3", "srtio3_full_lat.xml",  
+    SUPERCELL, SPECIES, NATS,
+    temp = TEMPERATURES, strain = STRAINS,
+    stress= STRESSES, field= FIELDS,
+    output_folder = "output"
+)
 
-    sim = MCSimulation()
-    sim.setup(
-        "input.fdf", SUPERCELL, SPECIES, NATS,
-        temp = TEMPERATURES, strain = STRAINS,
-        stress= STRESSES, field= FIELDS,
-        output_folder = "output"
-    )
+A, B, Ox, Oy, Oz = LABELS
 
-    # create an example starting geometry
-    starting_geometry = RestartGenerator(SUPERCELL, SPECIES, NATS)
-    for x in range(SUPERCELL[0]):
-        for y in range(SUPERCELL[1]):
-            for z in range(SUPERCELL[2]):
-                starting_geometry.cells[x,y,z].displacements["Ti"] = [0., 0., 0.2]
+# create an example starting geometry
+start_geom = Geometry(SUPERCELL, SPECIES, NATS)
 
-    # test independent simulation run
-    sim.change_output_folder("independent_output")
-    sim.independent_launch(start_geo=starting_geometry)
+for x in range(SUPERCELL[0]):
+    for y in range(SUPERCELL[1]):
+        for z in range(SUPERCELL[2]):
+            start_geom.displacements[x,y,z,B,:] = [0., 0., 0.2]
 
-    # test sequential simulation run
-    sim.change_output_folder("sequential_output")
-    sim.sequential_launch_by_temperature(start_geo=starting_geometry)
+# test independent simulation run
+sim.change_output_folder("independent_output")
+sim.independent_launch(start_geo=start_geom)
 
-    # test sequential simulation run (reverse order)
-    sim.change_output_folder("sequential_output_reverse")
-    sim.sequential_launch_by_temperature(
-        start_geo=starting_geometry,
-        inverse_order=True)
+# test sequential simulation run
+sim.change_output_folder("sequential_output")
+sim.sequential_launch_by_temperature(start_geo=start_geom)
 
-    print("\nEVERYTHING DONE!")
+# test sequential simulation run (reverse order)
+sim.change_output_folder("sequential_output_reverse")
+sim.sequential_launch_by_temperature(
+    start_geo=start_geom,
+    inverse_order=True)
+
+print("\nEVERYTHING DONE!")

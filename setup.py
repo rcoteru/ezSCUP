@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='ezSCUP',
-      version='v2.0',
+      version='v3.0',
       description='SCALE-UP Python Wrapper',
       url='https://github.com/rcote98/ezSCUP',
       author='Raúl Coterillo',

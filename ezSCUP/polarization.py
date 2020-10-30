@@ -2,17 +2,11 @@
 Several functions to calculate supercell polarization.
 """
 
-__author__ = "Raúl Coterillo"
-__email__  = "raulcote98@gmail.com"
-__status__ = "v2.0"
-
 # third party imports
 import numpy as np
 
 # package imports
-from ezSCUP.montecarlo import MCConfiguration
-from ezSCUP.generators import RestartGenerator
-from ezSCUP.geometry import Geometry, UnitCell
+from ezSCUP.geometry import Geometry
 
 import ezSCUP.settings as cfg
 import ezSCUP.exceptions
@@ -50,7 +44,7 @@ def unit_conversion(scup_polarization):
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-def polarization(config, born_charges):
+def polarization(geom, born_charges):
 
     """
 
@@ -68,32 +62,34 @@ def polarization(config, born_charges):
     
     """
 
-    if not isinstance(config, MCConfiguration):
-        raise ezSCUP.exceptions.InvalidMCConfiguration
+    if not isinstance(geom, Geometry):
+        raise ezSCUP.exceptions.InvalidGeometryObject
 
     labels = list(born_charges.keys())
 
+    if len(labels) != 5:
+        raise ezSCUP.exceptions.InvalidLabelList
+
     for l in labels:
-        if l not in config.geo.elements:
-            raise ezSCUP.exceptions.InvalidLabel
+        if l >= geom.nats:
+            raise ezSCUP.exceptions.AtomicIndexOutOfBounds
 
     
-    cnts = config.geo.lat_constants
-    stra = config.geo.strains
-    ncells = config.geo.supercell[0]*config.geo.supercell[1]*config.geo.supercell[2]
+    cnts = geom.lat_constants
+    stra = geom.strains
 
     ucell_volume = (cnts[0]*(1+stra[0]))*(cnts[1]*(1+stra[1]))*(cnts[2]*(1+stra[2]))
-    volume = ncells*ucell_volume
+    volume = geom.ncells*ucell_volume
 
     pol = np.zeros(3)
-    for x in range(config.geo.supercell[0]):
-        for y in range(config.geo.supercell[1]):
-            for z in range(config.geo.supercell[2]):
+    for x in range(geom.supercell[0]):
+        for y in range(geom.supercell[1]):
+            for z in range(geom.supercell[2]):
 
-                for label in config.geo.elements:
+                for l in labels:
 
-                    tau = config.geo.cells[x,y,z].displacements[label]
-                    charges = born_charges[label]
+                    tau = geom.displacements[x,y,z,l,:]
+                    charges = born_charges[l]
                     
                     for i in range(3):
                         pol[i] += charges[i]*tau[i]
@@ -104,7 +100,7 @@ def polarization(config, born_charges):
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-def stepped_polarization(config, born_charges):
+def stepped_polarization(supercell, species, nats, lat_cts, partials, born_charges):
 
     """
 
@@ -122,39 +118,33 @@ def stepped_polarization(config, born_charges):
 
     """
 
-    if not isinstance(config, MCConfiguration):
-        raise ezSCUP.exceptions.InvalidMCConfiguration
-
     labels = list(born_charges.keys())
 
     for l in labels:
-        if l not in config.geo.elements:
-            raise ezSCUP.exceptions.InvalidLabel
-
+        if l >= nats:
+            raise ezSCUP.exceptions.AtomicIndexOutOfBounds
     
-    cnts = config.geo.lat_constants
-    ncells = config.geo.supercell[0]*config.geo.supercell[1]*config.geo.supercell[2]
-    generator = RestartGenerator(config.geo.supercell, config.geo.species, config.geo.nats)
+    cnts = lat_cts
+    geom = Geometry(supercell, species, nats)
 
     pol_hist = []
-    for f in config.partials:
+    for f in partials:
         
-        generator.read(f)
+        geom.load_restart(f)
 
-        stra = generator.strains
+        stra = geom.strains
 
         ucell_volume = (cnts[0]*(1+stra[0]))*(cnts[1]*(1+stra[1]))*(cnts[2]*(1+stra[2]))
-        volume = ncells*ucell_volume
+        volume = geom.ncells*ucell_volume
 
         pol = np.zeros(3)
-        for x in range(config.geo.supercell[0]):
-            for y in range(config.geo.supercell[1]):
-                for z in range(config.geo.supercell[2]):
+        for x in range(geom.supercell[0]):
+            for y in range(geom.supercell[1]):
+                for z in range(geom.supercell[2]):
 
-                    for label in config.geo.elements:
-
-                        tau = generator.cells[x,y,z].displacements[label]
-                        charges = born_charges[label]
+                    for l in labels:
+                        tau = geom.displacements[x,y,z,l,:]
+                        charges = born_charges[l]
                         
                         for i in range(3):
                             pol[i] += charges[i]*tau[i]
@@ -165,7 +155,7 @@ def stepped_polarization(config, born_charges):
     return pol_hist
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
+'''
 def layered_polarization(config, born_charges):
 
     """
@@ -279,3 +269,4 @@ def column_polarization(config, born_charges):
                 pols_by_column[x,y] = unit_conversion(pol)
 
     return pols_by_column
+'''

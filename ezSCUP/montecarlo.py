@@ -14,7 +14,6 @@ import pandas as pd         # .out file loading
 # standard library imports
 from shutil import move,rmtree      # remove output folder
 from pathlib import Path            # general folder management
-from copy import deepcopy           # proper array copy
 import os, sys, csv                 # remove files, get pwd
 import pickle                       # store parameter vectors
 import time                         # check simulation run time
@@ -22,7 +21,6 @@ import re                           # regular expressions
 
 # package imports
 from ezSCUP.handlers import MC_SCUPHandler, FDFSetting
-from ezSCUP.generators import RestartGenerator
 from ezSCUP.geometry import Geometry
 
 import ezSCUP.settings as cfg
@@ -31,11 +29,6 @@ import ezSCUP.exceptions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # MODULE STRUCTURE
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-#
-# + class MCConfiguration():
-#   - simple_load()
-#   - auto_load()
-#   - lattice_output()
 #
 # + class MCSimulationParser() 
 #   - __init__()
@@ -51,230 +44,6 @@ import ezSCUP.exceptions
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-
-class MCConfiguration:
-
-    """
-
-    Parses all the data from a previously simulated 
-    configuration, providing easy access to all its output. 
-    
-    # BASIC USAGE # 
-    
-    Reads simulation data from a given configuration (subfolder) in the
-    output folder. By default this class starts empty, until a folder
-    is loaded with the load() method.
-
-    Basic information about the simulation such as supercell shape,
-    original lattice constants, elements information and number of
-    atoms in the unit cell are accessible via attributes.
-
-    The MC .partial file data is averaged out and stored in self.strains
-    and self.cells. More on cell information storage in ezSCUP.structures.
-
-    All the output file information is accessed through the output_file()
-    method, which returns a pandas Dataframe with the lattice ("LT:") data.
-
-    # ACCESSING CELL DATA #
-
-    In order to access cell data after loading the cell data in the class,
-    for example after acessing via the MCConfigurationParser class, just do:
-
-        sim = MCConfigurationParser()           # instantiate the parser class
-        config = sim.access(t, s=s, [...])      # access the configuration (this class)
-        cell = config.geo.cells[x,y,z]          # access the desired cell
-        cell.positions["element_label"]         # position data by label
-        cell.displacements["element_label"]     # displacement data by label
-
-    where x, y and z is the position of the desired cell in the supercell.
-    This will return a "Cell" class with an attribute "displacements", 
-    a dictionary with the displacement vector (average of partial .restarts)
-    for each element label, and another "positions" dictionary, with the 
-    position vectors (from REF file) for each label. (more within the next 
-    section)
-
-    # ELEMENT LABELING #
-
-    By default, SCALE-UP does not label elements in the output beside a 
-    non-descript number. This programs assigns a label to every atom in
-    order to easily access their data from dictionaries.
-
-    Suppose you have an SrTiO3 cell, with only three elements but five atoms.
-    Then the corresponding labels would be ["Sr","Ti","O1","O2","O3"].
-
-    Attributes:
-    ----------
-
-     - name (string): file base name
-     - folder_name (string): configuration folder (name)
-     - folder_path (string): configuration folder (full path)
-     - current_directory (sring): main script directory
-     - partials (list): partial files in the folder (full path)
-
-     - nmeas (int): number of measurements above the threshold
-     - total_steps (int): number of MC steps taken
-     - step_threshold: only pick partials with higher step 
-        than this. DEFAULT: cfg.MC_EQUILIBRATION_STEPS
-     
-     - geo (Geometry): class containing the system's geometry (ezSCUP.geometry)
-
-    """ 
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-        
-    def simple_load(self, base_sim_name):
-
-        """
-        
-        Load only the final state of a given MC simulation.
-        Provides limited functionality compared to the auto_load()
-        function, which is to be used with the MCSimulationParser class.
-
-        Parameters:
-        ----------
-
-        - folder_name  (string): configuration folder name,
-            usually [ScaleUP system_name].c[configuration number]
-
-        """
-
-        self.current_directory = os.getcwd()
-        self.name = base_sim_name
-
-        # loads basic filename information
-        self.name = base_sim_name
-        self.folder_name = None
-        self.current_directory = os.getcwd()
-        self.folder_path = self.current_directory
-
-        # no partials loaded
-        self.partials = []
-
-        reference_file = os.path.join(self.name + "_FINAL.REF")
-        restart_file = os.path.join(self.name + "_FINAL.restart")
-
-        self.geo = Geometry(reference_file)
-        self.geo.load_restart(restart_file)
-        
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-    def auto_load(self, folder_name, base_sim_name, config_data):
-
-        """
-        
-        Load the given configuration folder's data, obtaining
-        its equilibrium geometry in the process.
-
-        Parameters:
-        ----------
-
-        - folder_name  (string): configuration folder name,
-            usually [output folder name]/[ScaleUP system_name].c[configuration number]
-
-        - base_sim_name (list): basename of the ScaleUP files,
-            usually [ScaleUP system_name].T[temperature in integer format]
-
-        """
-
-        # load configuration parameters
-        self.temp =     config_data[0]
-        self.pressure = config_data[1]
-        self.strain =   config_data[2]
-        self.field =    config_data[3]
-
-        # load file and folder names
-        self.name = base_sim_name
-        self.folder_name = folder_name
-        self.current_directory = os.getcwd()
-
-        folder = os.path.join(self.current_directory, folder_name)
-        self.folder_path = folder
-
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-        # get partials, number of MC steps, etc
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-        # partial .restart files
-        partials = [k for k in os.listdir(folder) if 'partial' in k]
-        partials = sorted([k for k in partials if '.restart' in k])
-        self.partials = [os.path.join(self.folder_path, p) for p in partials]
-
-        # get total number of MC steps
-        self.total_steps = max([int(p[len(base_sim_name)+10:-8]) for p in partials])
-        self.step_threshold = cfg.MC_EQUILIBRATION_STEPS 
-
-        # check if any measurements are taken into consideration
-        if (self.total_steps <= self.step_threshold):
-            print("Step threshold {:d} greater than total steps ({:d}):".format(self.step_threshold, self.total_steps))
-            print(r"Reducing to 20% of total steps.")
-            self.step_threshold = int(0.2*self.total_steps)
-
-        # selects only partials above self.step_threshold steps
-        step_filter = [int(p[len(base_sim_name)+10:-8]) > self.step_threshold for p in partials]
-        partials = [p for i, p in enumerate(partials) if step_filter[i]]
-        self.partials = [os.path.join(self.folder_path, p) for p in partials]
-
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-        reference_file = os.path.join(folder, base_sim_name + "_FINAL.REF")
-        restart_file = os.path.join(folder, base_sim_name + "_EQUILIBRIUM.restart")
-
-        self.geo = Geometry(reference_file)
-        self.geo.load_restart(restart_file)
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-        
-    def lattice_output(self, fname=None):
-
-        """
-
-        Load the given configuration lattice data from its output file.
-
-        Return:
-        ----------
-            - a pandas Dataframe with the lattice output data.
-        """
-
-        if fname == None:
-            output_file = os.path.join(self.folder_path, self.name + ".out")
-        else:
-            output_file = fname
-        
-        # create a temporary file that
-        # contains only the lattice data
-        f = open(output_file, "r")
-        temp = open(".temp_re_search.txt", "w")
-        for line in f:
-            if re.search(cfg.LT_SEARCH_WORD, line):
-                temp.write(line)
-        temp.close()  
-        f.close()
-
-        # read the lattice data
-        lattice_data = pd.read_csv(".temp_re_search.txt", delimiter=r'\s+')
-        del lattice_data["LT:"]
-        lattice_data.set_index('Iter', inplace=True)
-
-        # remove temporary file
-        os.remove(".temp_re_search.txt")
-
-        self.step_threshold = cfg.MC_EQUILIBRATION_STEPS 
-        # check if any measurements are taken into consideration
-        if (self.total_steps <= self.step_threshold):
-            print("Step threshold {:d} greater than total steps ({:d}):".format(self.step_threshold, self.total_steps))
-            print(r"Reducing to 20% of total steps.")
-            self.step_threshold = int(0.2*self.total_steps)
-
-        lattice_data= lattice_data[lattice_data.index >= self.step_threshold]
-
-        return lattice_data
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-   
-# ================================================================= #
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-# ================================================================= #
 
 class MCSimulationParser:
 
@@ -304,20 +73,14 @@ class MCSimulationParser:
 
      - name (string): simulation file base name
 
+     #TODO
+
      - temp (array): temperature vectors (K) 
      - stress (array): stress vectors (Gpa)
      - strain (array): strain vectors (% change) 
      - field (array): electric field vectors (V/m)
 
-     - parser (MCConfiguration): last accessed configuration
-
     """
-
-    ########################
-    #      ATTRIBUTES      #
-    ########################
-
-    parser = MCConfiguration()
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -349,6 +112,7 @@ class MCSimulationParser:
 
             self.mc_steps            = setup["mc_steps"]
             self.mc_step_interval    = setup["mc_step_interval"]
+            self.mc_equilibration_steps = setup["mc_equilibration_steps"]
             self.mc_max_jump         = setup["mc_max_jump"]
             self.lat_output_interval = setup["lat_output_interval"]
 
@@ -365,25 +129,7 @@ class MCSimulationParser:
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    def access(self, t, p=None, s=None, f=None):
-
-        """
-
-        Accesses configuration data for the specified parameters.
-
-        Parameters:
-        ----------
-
-        - t (float): Temperature (compulsory)
-        - p (array): Pressure (optional)
-        - s (array): Strain (optional)
-        - f (array): Electric Field (optional)
-
-        Return:
-        ----------
-            - The MCConfiguration object corresponding to the desired configuration.
-
-        """
+    def get_location(self, t, p=None, s=None, f=None):
 
         # stress vector, optional
         if p is None:
@@ -414,27 +160,116 @@ class MCSimulationParser:
                 "The requested configuration has not been simulated."
             )
 
-        # get configuration name
+        # obtain configuration name
         conf_name = "c{:02d}{:02d}{:02d}{:02d}".format(t_index, 
             p_index, s_index, f_index)
 
-        # subfolder name
-        subfolder_name = self.name + "." + conf_name
+        # folder and file naming
         sim_name = self.name + "T{:d}".format(int(t))
-
+        subfolder_name = self.name + "." + conf_name
         folder = os.path.join(self.main_output_folder, subfolder_name)
 
-        self.parser.auto_load(folder, sim_name, config_data=[t, p, s, f])
+        return folder, sim_name
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def find_partials(self, t, p=None, s=None, f=None, min_step=0, max_step=np.inf):
+
+        folder, sim_name = self.get_location(t, p, s, f)
+
+        partials = [k for k in os.listdir(folder) if 'partial' in k]
+        partials = sorted([k for k in partials if '.restart' in k])
+        #partials = [os.path.join(folder, p) for p in partials]
+
+        low_filter = [int(p[len(sim_name)+10:-8]) > min_step for p in partials]
+        partials = [p for i, p in enumerate(partials) if low_filter[i]]
+
+        high_filter = [int(p[len(sim_name)+10:-8]) < max_step for p in partials]
+        partials = [p for i, p in enumerate(partials) if high_filter[i]]
+
+        partials = [os.path.join(folder, p) for p in partials]
+        return partials
+    
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def access_geometry(self, t, p=None, s=None, f=None):
+
+        """
+
+        Accesses configuration data for the specified parameters.
+
+        Parameters:
+        ----------
+
+        - t (float): Temperature (compulsory)
+        - p (array): Pressure (optional)
+        - s (array): Strain (optional)
+        - f (array): Electric Field (optional)
+
+        Return:
+        ----------
+            - A Geometry object for the corresponding configuration.
+
+        """
+
+        # folder and file naming
+        folder, sim_name = self.get_location(t, p, s, f)
+
+        reference_file = os.path.join(folder, sim_name + "_FINAL.REF")
+        restart_file = os.path.join(folder, sim_name + "_EQUILIBRIUM.restart")
+
+        geo = Geometry(self.supercell, self.species, self.nats)
+        geo.load_reference(reference_file)
+        geo.load_restart(restart_file)
         
-        return self.parser
+        return geo
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         
-    def print_simulation_setup(self):
-        
-        # TODO
-        
-        pass
+    def access_lattice_output(self, t, p=None, s=None, f=None):
+
+        """
+
+        Accesses configuration data for the specified parameters.
+
+        Parameters:
+        ----------
+
+        - t (float): Temperature (compulsory)
+        - p (array): Pressure (optional)
+        - s (array): Strain (optional)
+        - f (array): Electric Field (optional)
+
+        Return:
+        ----------
+            - The MCConfiguration object corresponding to the desired configuration.
+
+        """
+
+        # folder and file naming
+        folder, sim_name = self.get_location(t, p, s, f)
+        output_file = os.path.join(folder, sim_name + ".out")
+
+        # create a temporary file that
+        # contains only the lattice data
+        f = open(output_file, "r")
+        temp = open(".temp_re_search.txt", "w")
+        for line in f:
+            if re.search(cfg.LT_SEARCH_WORD, line):
+                temp.write(line)
+        temp.close()  
+        f.close()
+
+        # read the lattice data
+        lattice_data = pd.read_csv(".temp_re_search.txt", delimiter=r'\s+')
+        del lattice_data["LT:"]
+        lattice_data.set_index('Iter', inplace=True)
+
+        # remove temporary file
+        os.remove(".temp_re_search.txt")
+
+        return lattice_data
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -627,19 +462,20 @@ class MCSimulation:
         self.sim.settings["supercell"] = [list(self.supercell)]
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-        # modify FDF settings according to ezSCUP.settings
+        # record current settings from ezSCUP.settings
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         
         self.mc_steps = int(cfg.MC_STEPS)
         self.mc_step_interval = int(cfg.MC_STEP_INTERVAL)
+        self.mc_equilibration_steps = int(cfg.MC_EQUILIBRATION_STEPS)
         self.mc_max_jump = float(cfg.MC_MAX_JUMP)
         self.lat_output_interval = int(cfg.LATTICE_OUTPUT_INTERVAL)
         self.fixed_strain_components = cfg.FIXED_STRAIN_COMPONENTS
         
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-        # setup estart file generator
-        self.generator = RestartGenerator(self.supercell, self.species, self.nats)
+        # setup restart file generator
+        self.generator = Geometry(self.supercell, self.species, self.nats)
 
         # print common simulation settings
         if cfg.PRINT_CONF_SETTINGS:
@@ -663,6 +499,7 @@ class MCSimulation:
 
             "mc_steps": self.mc_steps,
             "mc_step_interval": self.mc_step_interval,
+            "mc_equilibration_steps": self.mc_equilibration_steps,
             "mc_max_jump": self.mc_max_jump,
             "lat_output_interval": self.lat_output_interval,
 
@@ -680,29 +517,6 @@ class MCSimulation:
         self.SETUP = True # simulation run setup nicely
 
         pass
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-    def find_partials(self, folder, sim_name):
-
-        partials = [k for k in os.listdir(folder) if 'partial' in k]
-        partials = sorted([k for k in partials if '.restart' in k])
-        partials = [os.path.join(folder, p) for p in partials]
-
-        total_steps = max([int(p[len(sim_name)+10:-8]) for p in partials])
-        step_threshold = cfg.MC_EQUILIBRATION_STEPS 
-
-        if (total_steps <= step_threshold):
-            print("Step threshold {:d} greater than total steps ({:d}):".format(step_threshold, total_steps))
-            print(r"Reducing to 20% of total steps.")
-            step_threshold = int(0.2*total_steps)
-
-        step_filter = [int(p[len(sim_name)+10:-8]) > step_threshold for p in partials]
-        partials = [p for i, p in enumerate(partials) if step_filter[i]]
-        partials = [os.path.join(folder, p) for p in partials]
-
-        return partials
-
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -759,6 +573,7 @@ class MCSimulation:
 
             "mc_steps": self.mc_steps,
             "mc_step_interval": self.mc_step_interval,
+            "mc_equilibration_steps": self.mc_equilibration_steps,
             "mc_max_jump": self.mc_max_jump,
             "lat_output_interval": self.lat_output_interval,
 
@@ -786,7 +601,7 @@ class MCSimulation:
         Parameters:
         ----------
 
-        - start_geo (RestartGenerator): starting geometry of every simulation.
+        - start_geo (Geometry): starting geometry of every simulation.
 
         """
 
@@ -800,22 +615,26 @@ class MCSimulation:
         if self.DONE == True:
             return 0
 
+        print("\n ~ Independent simulation run engaged. ~")
+
         # checks restart file matches loaded geometry
-        if start_geo != None and isinstance(start_geo, RestartGenerator):
+        if start_geo != None and isinstance(start_geo, Geometry):
 
             print("\nApplying starting geometry...")
             
             if not np.all(self.generator.supercell == start_geo.supercell): 
-                raise ezSCUP.exceptions.RestartNotMatching()
+                raise ezSCUP.exceptions.GeometryNotMatching()
 
             if self.generator.nats != None and (start_geo.nats != self.nats):
-                raise ezSCUP.exceptions.RestartNotMatching()
+                raise ezSCUP.exceptions.GeometryNotMatching()
 
             if self.generator.species != None and (set(self.species) != set(self.species)):
-                raise ezSCUP.exceptions.RestartNotMatching()
+                raise ezSCUP.exceptions.GeometryNotMatching()
 
-            self.generator.cells = deepcopy(start_geo.cells)
+            self.generator.displacements = start_geo.displacements
 
+        # parser to get partials
+        parser = MCSimulationParser(output_folder=self.output_folder)
 
         # simulation counters
         total_counter   =  0
@@ -879,13 +698,12 @@ class MCSimulation:
                         else:
                             f = np.zeros(3)
 
-
                         # define human output filename
                         output = sim_name + ".out"
 
                         # create restart file
                         self.sim.settings["geometry_restart"] = FDFSetting(sim_name + ".restart")
-                        self.generator.write(sim_name + ".restart")
+                        self.generator.write_restart(sim_name + ".restart")
 
                         # simulate the current configuration
                         self.sim.launch(output_file=output)
@@ -907,17 +725,16 @@ class MCSimulation:
                         print("\nConfiguration finished! (time elapsed: {:.3f}s)".format(conf_time))
 
                         # calculate equilibrium geometry
-                        print("Calculation equilibrium geometry...")
-                        partials = self.find_partials(configuration_folder, sim_name)
-                        reference_file = os.path.join(configuration_folder, sim_name + "_FINAL.REF")
-                        
-                        aux_geo = Geometry(reference_file)
+                        print("Calculating equilibrium geometry...")
+                        partials = parser.find_partials(t, p=p, s=s, f=f,
+                        min_step=self.mc_equilibration_steps)
+                        aux_geo = Geometry(self.supercell, self.species, self.nats)
                         aux_geo.load_equilibrium_displacements(partials)
                         aux_geo.write_restart(os.path.join(configuration_folder, sim_name + "_EQUILIBRIUM.restart"))
 
                         print("All files stored in output/" + subfolder_name + " succesfully.\n")
 
-        self.generator.reset()
+        self.generator.reset_geom()
 
         main_finished_time = time.time()
         main_time = main_finished_time - main_start_time
@@ -951,20 +768,21 @@ class MCSimulation:
         if self.DONE == True:
             return 0
 
+        print("\n ~ Sequential simulation run by temperature engaged. ~ ")
+
         # checks restart file matches loaded geometry
-        if start_geo != None and isinstance(start_geo, RestartGenerator):
+        if start_geo != None and isinstance(start_geo, Geometry):
 
             print("\nApplying starting geometry...")
             
             if not np.all(self.generator.supercell == start_geo.supercell): 
-                raise ezSCUP.exceptions.RestartNotMatching()
+                raise ezSCUP.exceptions.GeometryNotMatching()
 
             if self.generator.nats != None and (start_geo.nats != self.nats):
-                raise ezSCUP.exceptions.RestartNotMatching()
+                raise ezSCUP.exceptions.GeometryNotMatching()
 
             if self.generator.species != None and (set(self.species) != set(self.species)):
-                raise ezSCUP.exceptions.RestartNotMatching()
-
+                raise ezSCUP.exceptions.GeometryNotMatching()
 
         # parser to get equilibrium geometry
         parser = MCSimulationParser(output_folder=self.output_folder)
@@ -993,8 +811,8 @@ class MCSimulation:
                     field_counter = [np.array_equal(f,x) for x in self.field].index(True)
                     
                     # set starting geometry
-                    if start_geo != None and isinstance(start_geo, RestartGenerator):
-                        self.generator.cells = deepcopy(start_geo.cells)
+                    if start_geo != None and isinstance(start_geo, Geometry):
+                        self.generator.displacements = start_geo.displacements
 
                     tcount = 0
                     for t in temp_sequence:
@@ -1043,7 +861,7 @@ class MCSimulation:
 
                         # create restart file
                         self.sim.settings["geometry_restart"] = FDFSetting(sim_name + ".restart")
-                        self.generator.write(sim_name + ".restart")
+                        self.generator.write_restart(sim_name + ".restart")
 
                         # simulate the current configuration
                         self.sim.launch(output_file=output)
@@ -1057,11 +875,7 @@ class MCSimulation:
                             if sim_name in fi:
                                 move(fi, configuration_folder)
                         
-                        # grab final geometry for next run if needed
-                        if tcount < len(temp_sequence): 
-                            print("\nCalculating equilibrium geometry for the next simulation...")
-                            conf = parser.access(t, p=p, s=s, f=f)
-                            self.generator.cells = conf.geo.cells
+                        
 
                         # finish time of the current conf
                         conf_finish_time = time.time()
@@ -1071,18 +885,22 @@ class MCSimulation:
                         print("\nConfiguration finished! (time elapsed: {:.3f}s)".format(conf_time))
                         
                         # calculate equilibrium geometry
-                        print("Calculation equilibrium geometry...")
-                        partials = self.find_partials(configuration_folder, sim_name)
-                        reference_file = os.path.join(configuration_folder, sim_name + "_FINAL.REF")
-                        
-                        aux_geo = Geometry(reference_file)
+                        print("Calculating equilibrium geometry...")
+                        partials = parser.find_partials(t, p=p, s=s, f=f,
+                        min_step=self.mc_equilibration_steps)
+                        aux_geo = Geometry(self.supercell, self.species, self.nats)
                         aux_geo.load_equilibrium_displacements(partials)
                         aux_geo.write_restart(os.path.join(configuration_folder, sim_name + "_EQUILIBRIUM.restart"))
+
+                        # grab final geometry for next run if needed
+                        if tcount < len(temp_sequence): 
+                            geo = parser.access_geometry(t, p=p, s=s, f=f)
+                            self.generator.displacements = geo.displacements
 
                         print("All files stored in output/" + subfolder_name + " succesfully.\n")
 
 
-        self.generator.reset()
+        self.generator.reset_geom()
 
         main_finished_time = time.time()
         main_time = main_finished_time - main_start_time
