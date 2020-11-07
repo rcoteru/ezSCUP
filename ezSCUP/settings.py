@@ -52,11 +52,9 @@ MC_MAX_JUMP = 0.5
 # FDF setting: "mc_annealing_rate"
 MC_ANNEALING_RATE = 1
 
-
 # Step interval for lattice info in the output.
 # FDF setting: "print_std_lattice_nsteps"
 LATTICE_OUTPUT_INTERVAL = 50
-
 
 # Whether or not to fix the array componentes. Requires a list of six 
 # boolean values, representing if a component is fixed (True) or 
@@ -69,5 +67,5 @@ LATTICE_OUTPUT_INTERVAL = 50
 # default: [False, False, False, False, False, False]
 FIXED_STRAIN_COMPONENTS = [False, False, False, False, False, False]
 
-
+# Whether or not to print FDF settings before each simulation run. 
 PRINT_CONF_SETTINGS = False

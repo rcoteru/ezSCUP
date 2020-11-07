@@ -33,7 +33,7 @@ import ezSCUP.exceptions
 # + func perovskite_simple_rotation(config, labels)
 # + func perovskite_polarization(config, labels, born_charges)
 #
-# + generate_vortex_geo()
+# + func generate_vortex_geo(supercell, species, labels, disp, region_size)
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -71,7 +71,7 @@ def perovskite_AFD(geom, labels, mode="a"):
         raise ezSCUP.exceptions.InvalidLabelList
 
     for l in labels:
-        if l >= geom.nats:
+        if int(l) >= geom.nats:
             raise ezSCUP.exceptions.AtomicIndexOutOfBounds
 
     _, B, Ox, Oy, Oz = labels
@@ -241,9 +241,9 @@ def perovskite_FE_full(geom, labels):
 
     if len(labels) != 5:
         raise ezSCUP.exceptions.InvalidLabelList
-
+    
     for l in labels:
-        if l >= geom.nats:
+        if int(l) >= geom.nats:
             raise ezSCUP.exceptions.AtomicIndexOutOfBounds
     
     A, B, Ox, Oy, Oz = labels
@@ -351,7 +351,7 @@ def perovskite_FE_simple(geom, labels, mode="B"):
         raise ezSCUP.exceptions.InvalidLabelList
 
     for l in labels:
-        if l >= geom.nats:
+        if int(l) >= geom.nats:
             raise ezSCUP.exceptions.AtomicIndexOutOfBounds
 
     A, B, _, _, _ = labels
@@ -432,7 +432,7 @@ def perovskite_simple_rotation(geom, labels):
         raise ezSCUP.exceptions.InvalidLabelList
 
     for l in labels:
-        if l >= geom.nats:
+        if int(l) >= geom.nats:
             raise ezSCUP.exceptions.AtomicIndexOutOfBounds
 
     _, B, Ox, Oy, Oz = labels
@@ -544,7 +544,7 @@ def perovskite_polarization(geom, labels, born_charges):
     ]
 
     cnts = geom.lat_constants
-    stra = geom.geo.strains
+    stra = geom.strains
 
     ucell_volume = (cnts[0]*(1+stra[0]))*(cnts[1]*(1+stra[1]))*(cnts[2]*(1+stra[2]))
 
@@ -589,7 +589,9 @@ def generate_vortex_geo(supercell, species, labels, disp, region_size):
 
     This geometry consists of alternating regions of compound xy axis
     rotations of the oxygen octahedra, resulting in the creation of vortexes
-    while projecting the AFDa rotational mode.
+    while projecting the AFDa rotational mode. The structure also generates
+    a polarization in the xy plain, which is also included for stability 
+    purposes.
 
     Parameters:
     ----------
@@ -609,7 +611,7 @@ def generate_vortex_geo(supercell, species, labels, disp, region_size):
 
     geom = Geometry(supercell, species, 5)
 
-    _, _, Ox, Oy, Oz = labels 
+    _, B, Ox, Oy, Oz = labels 
 
     for x in range(supercell[0]):
         for y in range(supercell[1]):
@@ -635,6 +637,9 @@ def generate_vortex_geo(supercell, species, labels, disp, region_size):
                     # rotación y
                     geom.displacements[x,y,z,Oz,1] += factor*disp
                     geom.displacements[x,y,z,Oy,2] -= factor*disp
+                    # FE x negativo y positivo
+                    geom.displacements[x,y,z,B,0] -= disp
+                    geom.displacements[x,y,z,B,1] += disp
 
                 if case == "B":
                     # rotación x negativa
@@ -643,6 +648,9 @@ def generate_vortex_geo(supercell, species, labels, disp, region_size):
                     # rotación y
                     geom.displacements[x,y,z,Oz,1] += factor*disp
                     geom.displacements[x,y,z,Oy,2] -= factor*disp
+                    # FE x negativo y negativo
+                    geom.displacements[x,y,z,B,0] -= disp
+                    geom.displacements[x,y,z,B,1] -= disp
 
                 if case == "D":
                     # rotación x negativa
@@ -651,6 +659,9 @@ def generate_vortex_geo(supercell, species, labels, disp, region_size):
                     # rotación y negativa
                     geom.displacements[x,y,z,Oz,1] -= factor*disp
                     geom.displacements[x,y,z,Oy,2] += factor*disp
+                    # FE x positivo y negativo
+                    geom.displacements[x,y,z,B,0] += disp
+                    geom.displacements[x,y,z,B,1] -= disp
 
                 if case == "C":
                     # rotación x
@@ -659,5 +670,8 @@ def generate_vortex_geo(supercell, species, labels, disp, region_size):
                     # rotación y negativa
                     geom.displacements[x,y,z,Oz,1] -= factor*disp
                     geom.displacements[x,y,z,Oy,2] += factor*disp 
+                    # FE x positivo y positivo
+                    geom.displacements[x,y,z,B,0] += disp
+                    geom.displacements[x,y,z,B,1] += disp
 
     return geom

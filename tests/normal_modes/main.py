@@ -58,26 +58,23 @@ else:
     with open("hessian.pickle", "rb") as f:
                 hessian = pickle.load(f) 
 
-#for i in range(NATS*3):
-#    for j in range(NATS*3):
-#        s1 = int(np.floor((i/NATS)))
-#        s2 = int(np.floor((j/NATS)))
-#        hessian[i,j] = hessian[i,j]*np.sqrt(MASSES[s1])*np.sqrt(MASSES[s2])
+M = []
+for m in MASSES:
+    for _ in range(3):    
+        M.append(m)
+M = np.diagflat(M)
+Mi = np.linalg.inv(M)
 
-def normalize(vec):
-    return vec/np.linalg.norm(vec)
+normHessian = np.matmul(Mi, hessian)
+w, v = np.linalg.eigh(normHessian)
 
-np.set_printoptions(suppress=True, precision=2)
-w, v = np.linalg.eig(hessian)
-
+np.set_printoptions(suppress=True, precision=3)
 for i, val in enumerate(w):
-    v[:,i] = normalize(v[:,i])
+    print("---------------------------------------------")
     print("Mode #" + str(i) + " -> Eigenvalue:" + str(val))
     print("Sr: " + str(v[0:3,i]))
     print("Ti: " + str(v[3:6,i]))
-    print("Ox: " + str(v[12:15,i]))
-    print("Oy: " + str(v[9:12,i]))
     print("Oz: " + str(v[6:9,i]))
-    print("------------------------------------\n")
-    
-    
+    print("Oy: " + str(v[9:12,i]))
+    print("Ox: " + str(v[12:15,i]))
+    print("---------------------------------------------\n")

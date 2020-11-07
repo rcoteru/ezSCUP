@@ -2,9 +2,6 @@
 Classes to handle writing output data files for external use.
 """
 
-# package imports
-import ezSCUP.settings as cfg
-
 #####################################################################
 ## MODULE STRUCTURE
 #####################################################################
