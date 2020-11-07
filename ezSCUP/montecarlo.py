@@ -1,10 +1,7 @@
 """
-Collection of classes to mass-execute SCALE-UP Monte Carlo simulations.
-
-Classes to execute SCALE-UP Monte Carlo simulations in a range of 
-temperature, strain, stress and electric field settings 
-with ease. Each simulation class comes with a parser that 
-automates the process of dealing with the output data.
+Classes to mass-execute SCALE-UP Monte Carlo simulations.
+in a range of  temperature, strain, stress and electric field settings 
+with ease.
 """
 
 # third party imports
@@ -49,31 +46,26 @@ class MCSimulationParser:
 
     """
 
-    Parses all the data from a previously simulated configuration, 
-    providing easy access to all its output. 
+    Provides easy access to the data from a previous simulation.
     
-    # BASIC USAGE # 
-    
-    Reads simulation data from a given configuration (subfolder) in the
-    output folder. By default this class starts empty, until a folder
-    is loaded with the load() method.
-
-    Basic information about the simulation such as supercell shape,
-    original lattice constants, elements information and number of
-    atoms in the unit cell are accessible via attributes.
-
-    The MC .partial file data is averaged out and stored in self.strains
-    and self.cells. More on cell information storage in ezSCUP.structures.
-
-    All the output file information is accessed through the output_file()
-    method, which returns a pandas Dataframe with the lattice ("LT:") data.
-
     Attributes:
     ----------
 
      - name (string): simulation file base name
+     - supercell (array): supercell shape
+     - species (list): atomic species within the supercell
+     - nats (int): number of atoms per unit cell
 
-     #TODO
+     . main_output_folder (string):
+     - simulation_setup_file(string): 
+     - mc_steps (int): MC steps per simulation.
+     - mc_step_interval (int): MC steps between partial .restarts
+     - mc_equilibration_steps (int): equilibration steps for the
+    calculated equilibirum geometry.
+     - mc_max_jump (float): MC max jump distance, in Angstrom.
+     - lat_output_interval (int): MC step interval between lattice
+     data entries.
+     - fixed_strain_components (list): fixed strain components.
 
      - temp (array): temperature vectors (K) 
      - stress (array): stress vectors (Gpa)
@@ -131,6 +123,24 @@ class MCSimulationParser:
 
     def get_location(self, t, p=None, s=None, f=None):
 
+        """
+
+        Return the location (folder) and base filename of a given configuration.
+
+        Parameters:
+        ----------
+
+        - t (float): Temperature (compulsory)
+        - p (array): Pressure (optional)
+        - s (array): Strain (optional)
+        - f (array): Electric Field (optional)
+
+        Return:
+        ----------
+            - Folder and base filename of the requested configuration.
+
+        """
+
         # stress vector, optional
         if p is None:
             p = np.zeros(6)
@@ -175,6 +185,27 @@ class MCSimulationParser:
 
     def find_partials(self, t, p=None, s=None, f=None, min_step=0, max_step=np.inf):
 
+        """
+
+        Return the partial .restart files for a given configuration
+
+        Parameters:
+        ----------
+
+        - t (float): Temperature (compulsory)
+        - p (array): Pressure (optional)
+        - s (array): Strain (optional)
+        - f (array): Electric Field (optional)
+
+        - min_step (int): minimum step of the requested partials.
+        - max_step (int): maximum step of the requested partials.
+
+        Return:
+        ----------
+            - A list with the requested .restart filenames.
+
+        """
+
         folder, sim_name = self.get_location(t, p, s, f)
 
         partials = [k for k in os.listdir(folder) if 'partial' in k]
@@ -197,7 +228,7 @@ class MCSimulationParser:
 
         """
 
-        Accesses configuration data for the specified parameters.
+        Access the equilibrium geometry of the corresponding configuration.
 
         Parameters:
         ----------
@@ -231,7 +262,7 @@ class MCSimulationParser:
 
         """
 
-        Accesses configuration data for the specified parameters.
+        Access the lattice output data of the corresponding configuration.
 
         Parameters:
         ----------
@@ -243,7 +274,8 @@ class MCSimulationParser:
 
         Return:
         ----------
-            - The MCConfiguration object corresponding to the desired configuration.
+            - A pandas Dataframe with the lattice output corresponding to 
+            the desired configuration.
 
         """
 
@@ -748,8 +780,8 @@ class MCSimulation:
 
         """
         
-        Simulation run where the final geometry of the simulation for 
-        each TEMPERATURE is used as starting geometry of the next one.
+        Simulation run where the equilibrium geometry of the simulation for 
+        the previous temperature is used as starting geometry of the next one.
 
         Parameters:
         ----------

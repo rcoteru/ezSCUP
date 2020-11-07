@@ -27,27 +27,15 @@ import ezSCUP.exceptions
 class Geometry():
 
     """
-    Geometry container
+    SCALE-UP Geometry Container
 
     # BASIC USAGE # 
 
     On creation, the class asks for a supercell shape (ie. [4,4,4]),
     the atomic species in each cell (ie. ["Sr", "Ti", "O"]) and the 
-    number of atoms per unit cell (ie. 5). It then creates a cell
-    structure within the self.cells attribute, containing displacements
-    from an unspecified reference structure (they are all zero on creation).
-    This attribute may be modified via external access in order to obtain 
-    the desired structure.
-
-    The self.read() and self.write() methods provide ways to respectively 
-    load and create .restart geometry files for SCALE-UP using this information.
-    
-    Reads geometry data from a given configuration's .REF file,
-    yielding access to its contents through a cell structure within
-    the self.cells attribute. Atomic displcements and strains are
-    all set to zero by default, until a .restart geometry file is 
-    loaded using the self.load_restart() (only one file) or the
-    self.load_equilibrium_geometry() (average of several files) methods.
+    number of atoms per unit cell (ie. 5). It then creates an empty
+    array containing the atomic displacements. Other data must be
+    loaded through the class methods.
 
     Basic information about the simulation such as supercell shape,
     number of cells, elements, number of atoms per cell, lattice
@@ -62,7 +50,7 @@ class Geometry():
         geo.load_reference("example.REF")               # load a .REF file
         geo.load_reference("example.restart")           # load a .restart file
         geo.positions[x,y,z,j,:]                        # position vector of atom j in cell (x,y,z)
-        desired_cell.displacements["element_label"]     # displacement vector of atom j in cell (x,y,z)
+        geo.displacements[x,y,z,j,:]                    # displacement vector of atom j in cell (x,y,z)
 
     Attributes:
     ----------
@@ -72,7 +60,6 @@ class Geometry():
      - nats (int): number of atoms per unit cell
      - nels (int): number of distinct atomic species
      - species (list): atomic species within the supercell
-     - elements (list): labels for the atoms within the cells
      - strains (array): supercell strains, in Voigt notation
      - lat_vectors (1x9 array): lattice vectors, in Bohrs 
      - lat_constants (array): xx, yy, zz lattice constants, in Bohrs
@@ -96,7 +83,7 @@ class Geometry():
         - supercell (array): supercell shape (ie. [4,4,4])
         - species (list): atomic species within the supercell 
         (ie. ["Sr", "Ti", "O"])
-        - - nats (int): number of atoms per unit cell (ie. 5)
+        - nats (int): number of atoms per unit cell (ie. 5)
 
         """
 

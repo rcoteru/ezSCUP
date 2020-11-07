@@ -2,16 +2,18 @@
 General settings for the ezSCUP package.
 """
 
+import os
+
 #####################################################################
 ##  EZSCUP SETTINGS
 #####################################################################
 
 # Location of the Scale-Up executable in the system
 # This setting is required to run any simulations.
-# default: None
-#SCUP_EXEC = "/home/raul/Software/scale-up-1.0.0/build_dir/src/scaleup.x"
+# By default picks up the environment variable SCUP_EXEC.
+# If it hasnt been setup, defaults to None.
 #SCUP_EXEC = "/home/citimac/jjunquer/Code/Git/scaleup/Obj/Intel-Parallel-OpenMP/src/scaleup.x"
-SCUP_EXEC = None
+SCUP_EXEC = os.getenv("SCUP_EXEC", default = None) 
 
 # Whether or not to overwrite old output when starting a 
 # new simulation run. 

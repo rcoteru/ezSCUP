@@ -17,7 +17,7 @@ import os, sys
 
 # package imports
 from ezSCUP.polarization import unit_conversion
-from ezSCUP.projection import ModeAnalyzer
+from ezSCUP.projection import measure
 from ezSCUP.geometry import Geometry
 
 import ezSCUP.settings as cfg
@@ -27,21 +27,105 @@ import ezSCUP.exceptions
 # MODULE STRUCTURE
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 #
-# + func perovskite_AFD(config, labels, mode="a")
-# + func perovskite_FE_full(config, labels)
-# + func perovskite_FE_simple(config, labels, mode="B")
 # + func perovskite_simple_rotation(config, labels)
+# + func perovskite_AFD(config, labels, mode="a")
+# + func perovskite_FE(config, labels)
+# + func perovskite_JT(config, labels)
+#
 # + func perovskite_polarization(config, labels, born_charges)
 #
 # + func generate_vortex_geo(supercell, species, labels, disp, region_size)
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-def perovskite_AFD(geom, labels, mode="a"):
+# ================================================================= #
+# ~~~~~~~~~~~~~~~~~~~ Pattern Projection ~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ================================================================= #
+
+def perovskite_simple_rotation(geom, labels, angles=True):
+
+    """
+    Calculates the perovskite octahedral rotations of each unit cell.
+    
+    Parameters:
+    ----------
+
+    - config (MCConfiguration): configuration to be loaded.
+    - labels (list): identifiers of the five perovskite atoms [A, B, 0x, Oy, Oz]
+    
+    Return:
+    ----------
+    - three supercell-sized arrays containing the rotation angle in the
+    x, y and z directions of each unit cell (in degrees)
+    
+    """
+
+    if not isinstance(geom, Geometry):
+        raise ezSCUP.exceptions.InvalidGeometryObject
+
+    if not isinstance(labels, list):
+        raise ezSCUP.exceptions.InvalidLabelList
+
+    if len(labels) != 5:
+        raise ezSCUP.exceptions.InvalidLabelList
+
+    for l in labels:
+        if int(l) >= geom.nats:
+            raise ezSCUP.exceptions.AtomicIndexOutOfBounds
+
+    _, B, Ox, Oy, Oz = labels
+
+    ### DISTORTIONS ###
+
+    rot_X=[
+            # atom, hopping, weight, target vector
+            [Oy, [0, 0, 0],1./4.,[ 0.0, 0.0,-1.0]],
+            [Oz, [0, 0, 0],1./4.,[ 0.0, 1.0, 0.0]],
+            [Oy, [0, 0, 1],1./4.,[ 0.0, 0.0, 1.0]],
+            [Oz, [0, 1, 0],1./4.,[ 0.0,-1.0, 0.0]]
+        ]
+
+    rot_Y=[
+            # atom, hopping, weight, target vector
+            [Ox, [0, 0, 0],1./4.,[ 0.0, 0.0, 1.0]],
+            [Oz, [0, 0, 0],1./4.,[-1.0, 0.0, 0.0]],
+            [Ox, [1, 0, 0],1./4.,[ 0.0, 0.0,-1.0]],
+            [Oz, [0, 0, 1],1./4.,[ 1.0, 0.0, 0.0]]
+        ]
+
+    rot_Z=[
+            # atom, hopping, weight, target vector
+            [Ox, [0, 0, 0],1./4.,[ 0.0,-1.0, 0.0]],
+            [Oy, [0, 0, 0],1./4.,[ 1.0, 0.0, 0.0]],
+            [Ox, [1, 0, 0],1./4.,[ 0.0, 1.0, 0.0]],
+            [Oy, [0, 1, 0],1./4.,[-1.0, 0.0, 0.0]]
+    ]
+
+    # distortion
+    dist = np.zeros((geom.supercell[0], geom.supercell[1], geom.supercell[2], 3))
+    dist[:,:,:,0] = measure(geom, rot_X)
+    dist[:,:,:,1] = measure(geom, rot_Y)
+    dist[:,:,:,2] = measure(geom, rot_Z)
+    
+    # symmetry corrections -> R-point instability
+    for x in range(geom.supercell[0]):
+        for y in range(geom.supercell[1]):
+            for z in range(geom.supercell[2]):
+                dist[x,y,z,:] = (-1)**x * (-1)**y * (-1)**z * dist[x,y,z,:]
+
+    if angles:
+        BO_dist = np.linalg.norm(geom.positions[0,0,0,B,:] - geom.positions[0,0,0,Ox,:])
+        return np.arctan(dist/BO_dist)*180/np.pi
+    else:
+        return dist
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+def perovskite_AFD(geom, labels, mode="a", angles=True):
 
     """
 
-    Calculates the perovskite octahedral antiferrodistortive rotation 
+    Calculates the octahedral antiferrodistortive rotation 
     of each unit cell.
     
     Parameters:
@@ -75,16 +159,6 @@ def perovskite_AFD(geom, labels, mode="a"):
             raise ezSCUP.exceptions.AtomicIndexOutOfBounds
 
     _, B, Ox, Oy, Oz = labels
-
-    analyzer = ModeAnalyzer()
-
-    BPos = geom.positions[0,0,0,B,:]
-    OxPos = geom.positions[0,0,0,Ox,:]
-    OyPos = geom.positions[0,0,0,Oy,:]
-    OzPos = geom.positions[0,0,0,Oz,:]
-    BO_dist_x = np.linalg.norm(BPos - OxPos)*(1+geom.strains[0])
-    BO_dist_y = np.linalg.norm(BPos - OyPos)*(1+geom.strains[1])
-    BO_dist_z = np.linalg.norm(BPos - OzPos)*(1+geom.strains[2])
 
     AFDa_X=[
             # atom, hopping, weight, target vector
@@ -172,53 +246,51 @@ def perovskite_AFD(geom, labels, mode="a"):
 
     if mode == "a":
 
-        x_distortions = analyzer.measure(geom, AFDa_X)
-        x_angles = np.arctan(x_distortions/BO_dist_x)*180/np.pi
-
-        y_distortions = analyzer.measure(geom, AFDa_Y)
-        y_angles = np.arctan(y_distortions/BO_dist_y)*180/np.pi
-
-        z_distortions = analyzer.measure(geom, AFDa_Z)
-        z_angles = np.arctan(z_distortions/BO_dist_z)*180/np.pi
-
-        # symmetry corrections -> R-point distortion
+        # distortion
+        dist = np.zeros((geom.supercell[0], geom.supercell[1], geom.supercell[2], 3))
+        dist[:,:,:,0] = measure(geom, AFDa_X)
+        dist[:,:,:,1] = measure(geom, AFDa_Y)
+        dist[:,:,:,2] = measure(geom, AFDa_Z)
+        
+        # symmetry corrections -> R-point instability
         for x in range(geom.supercell[0]):
             for y in range(geom.supercell[1]):
                 for z in range(geom.supercell[2]):
-                    x_angles[x,y,z] = (-1)**x * (-1)**y * (-1)**z * x_angles[x,y,z]
-                    y_angles[x,y,z] = (-1)**x * (-1)**y * (-1)**z * y_angles[x,y,z]
-                    z_angles[x,y,z] = (-1)**x * (-1)**y * (-1)**z * z_angles[x,y,z]
+                    dist[x,y,z,:] = (-1)**x * (-1)**y * (-1)**z * dist[x,y,z,:]
 
-        return (x_angles, y_angles, z_angles)
+        if angles:
+            BO_dist = np.linalg.norm(geom.positions[0,0,0,B,:] - geom.positions[0,0,0,Ox,:])
+            return np.arctan(dist/BO_dist)*180/np.pi
+        else:
+            return dist
 
     else:
 
-        x_distortions = analyzer.measure(geom, AFDi_X)
-        x_angles = np.arctan(x_distortions/BO_dist_x)*180/np.pi
-
-        y_distortions = analyzer.measure(geom, AFDi_Y)
-        y_angles = np.arctan(y_distortions/BO_dist_y)*180/np.pi
-
-        z_distortions = analyzer.measure(geom, AFDi_Z)
-        z_angles = np.arctan(z_distortions/BO_dist_z)*180/np.pi
-
-        # symmetry corrections -> R-point distortion
+        # distortion
+        dist = np.zeros((geom.supercell[0], geom.supercell[1], geom.supercell[2], 3))
+        dist[:,:,:,0] = measure(geom, AFDi_X)
+        dist[:,:,:,1] = measure(geom, AFDi_Y)
+        dist[:,:,:,2] = measure(geom, AFDi_Z)
+        
+        # symmetry corrections -> R-point instability
         for x in range(geom.supercell[0]):
             for y in range(geom.supercell[1]):
                 for z in range(geom.supercell[2]):
-                    x_angles[x,y,z] = (-1)**y * (-1)**z * x_angles[x,y,z]
-                    y_angles[x,y,z] = (-1)**x * (-1)**z * y_angles[x,y,z]
-                    z_angles[x,y,z] = (-1)**x * (-1)**y * z_angles[x,y,z]
+                    dist[x,y,z,:] = (-1)**x * (-1)**y * (-1)**z * dist[x,y,z,:]
 
-        return (x_angles, y_angles, z_angles)
+        if angles:
+            BO_dist = np.linalg.norm(geom.positions[0,0,0,B,:] - geom.positions[0,0,0,Ox,:])
+            return np.arctan(dist/BO_dist)*180/np.pi
+        else:
+            return dist
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-def perovskite_FE_full(geom, labels):
+def perovskite_FE(geom, labels):
 
     """
 
-    Calculates the perovskite ferroelectric displacements of each unit cell.
+    Calculates the ferroelectric displacements of each unit cell.
     
     Parameters:
     ----------
@@ -248,11 +320,9 @@ def perovskite_FE_full(geom, labels):
     
     A, B, Ox, Oy, Oz = labels
 
-    analyzer = ModeAnalyzer()
-
     ### B SITE DISTORTIONS ###
 
-    FE_X_B=[  # atom, hopping, weight, target vector
+    FE_X=[  # atom, hopping, weight, target vector
             # "frame"
             [A, [0, 0, 0], 1./8., [ 1.0, 0.0, 0.0]],
             [A, [1, 0, 0], 1./8., [ 1.0, 0.0, 0.0]],
@@ -272,7 +342,7 @@ def perovskite_FE_full(geom, labels):
             [Oz, [0, 0, 1], 1./2., [-1.0, 0.0, 0.0]]
         ]
 
-    FE_Y_B=[  # atom, hopping, weight, target vector
+    FE_Y=[  # atom, hopping, weight, target vector
             # "frame"
             [A, [0, 0, 0], 1./8., [ 0.0, 1.0, 0.0]],
             [A, [1, 0, 0], 1./8., [ 0.0, 1.0, 0.0]],
@@ -292,7 +362,7 @@ def perovskite_FE_full(geom, labels):
             [Oz, [0, 0, 1], 1./2., [ 0.0,-1.0, 0.0]]
         ]
 
-    FE_Z_B=[  # atom, hopping, weight, target vector
+    FE_Z=[  # atom, hopping, weight, target vector
             # "frame"
             [A, [0, 0, 0], 1./8., [0.0, 0.0, 1.0]],
             [A, [1, 0, 0], 1./8., [0.0, 0.0, 1.0]],
@@ -312,32 +382,32 @@ def perovskite_FE_full(geom, labels):
             [Oz, [0, 0, 1], 1./2., [0.0, 0.0,-1.0]]
         ]
 
+    dist = np.zeros((geom.supercell[0], geom.supercell[1], geom.supercell[2], 3))
+    dist[:,:,:,0] = measure(geom, FE_X)
+    dist[:,:,:,1] = measure(geom, FE_Y)
+    dist[:,:,:,2] = measure(geom, FE_Z)
 
-    x_dist = analyzer.measure(geom, FE_X_B)
-    y_dist = analyzer.measure(geom, FE_Y_B)
-    z_dist = analyzer.measure(geom, FE_Z_B)
-
-    return x_dist, y_dist, z_dist
+    return dist
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-def perovskite_FE_simple(geom, labels, mode="B"):
+def perovskite_JT(geom, labels):
 
     """
 
-    Calculates the simple perovskite ferroelectric displacements of each unit cell.
+    Calculates the Jahn Teller "breathing" distortion of each
+    unit cell.
     
     Parameters:
     ----------
 
     - config (MCConfiguration): configuration to be loaded.
     - labels (list): identifiers of the five perovskite atoms [A, B, 0x, Oy, Oz]
-    - mode ("A" or "B"): look at either A-site or B-site (default) displacements.
     
     Return:
     ----------
     - three supercell-sized arrays containing the ferroelectric dispalcements 
-     in the x, y and z directions of each unit cell (in bohr)
+    in the x, y and z directions of each unit cell (in bohr)
     
     """
 
@@ -349,142 +419,52 @@ def perovskite_FE_simple(geom, labels, mode="B"):
 
     if len(labels) != 5:
         raise ezSCUP.exceptions.InvalidLabelList
-
+    
     for l in labels:
         if int(l) >= geom.nats:
             raise ezSCUP.exceptions.AtomicIndexOutOfBounds
-
-    A, B, _, _, _ = labels
-
-    analyzer = ModeAnalyzer()
-
-    ### A SITE DISTORTIONS ###
-
-    FE_X_A=[  # atom, hopping, weight, target vector
-            [A, [0, 0, 0], 1., [ 1.0, 0.0, 0.0]] # b site
-        ]
-
-    FE_Y_A=[  # atom, hopping, weight, target vector
-            [A, [0, 0, 0], 1., [ 0.0, 1.0, 0.0]] # b site
-        ]
-
-    FE_Z_A=[  # atom, hopping, weight, target vector
-            [A, [0, 0, 0], 1., [0.0, 0.0, 1.0]] # b site
-        ]
-
-    ### B SITE DISTORTIONS ###
-
-    FE_X_B=[  # atom, hopping, weight, target vector
-            [B, [0, 0, 0], 1, [ 1.0, 0.0, 0.0]] # b site
-        ]
-
-    FE_Y_B=[  # atom, hopping, weight, target vector
-            [B, [0, 0, 0], 1., [ 0.0, 1.0, 0.0]] # b site
-        ]
-
-    FE_Z_B=[  # atom, hopping, weight, target vector
-            [B, [0, 0, 0], 1., [0.0, 0.0, 1.0]] # b site
-        ]
-
-    if mode == "A":
-
-        x_dist = analyzer.measure(geom, FE_X_A)
-        y_dist = analyzer.measure(geom, FE_Y_A)
-        z_dist = analyzer.measure(geom, FE_Z_A)
-
-        return x_dist, y_dist, z_dist
-
-    else:
-
-        x_dist = analyzer.measure(geom, FE_X_B)
-        y_dist = analyzer.measure(geom, FE_Y_B)
-        z_dist = analyzer.measure(geom, FE_Z_B)
-
-        return x_dist, y_dist, z_dist
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-def perovskite_simple_rotation(geom, labels):
-
-    """
-    Calculates the perovskite octahedral rotations of each unit cell.
     
-    Parameters:
-    ----------
+    _, _, Ox, Oy, Oz = labels
 
-    - config (MCConfiguration): configuration to be loaded.
-    - labels (list): identifiers of the five perovskite atoms [A, B, 0x, Oy, Oz]
-    
-    Return:
-    ----------
-    - three supercell-sized arrays containing the rotation angle in the
-    x, y and z directions of each unit cell (in degrees)
-    
-    """
-
-    if not isinstance(geom, Geometry):
-        raise ezSCUP.exceptions.InvalidGeometryObject
-
-    if not isinstance(labels, list):
-        raise ezSCUP.exceptions.InvalidLabelList
-
-    if len(labels) != 5:
-        raise ezSCUP.exceptions.InvalidLabelList
-
-    for l in labels:
-        if int(l) >= geom.nats:
-            raise ezSCUP.exceptions.AtomicIndexOutOfBounds
-
-    _, B, Ox, Oy, Oz = labels
-
-    analyzer = ModeAnalyzer()
-
-    BPos = geom.positions[0,0,0,B,:]
-    OxPos = geom.positions[0,0,0,Ox,:]
-    OyPos = geom.positions[0,0,0,Oy,:]
-    OzPos = geom.positions[0,0,0,Oz,:]
-    BO_dist_x = np.linalg.norm(BPos - OxPos)*(1+geom.strains[0])
-    BO_dist_y = np.linalg.norm(BPos - OyPos)*(1+geom.strains[1])
-    BO_dist_z = np.linalg.norm(BPos - OzPos)*(1+geom.strains[2])
-
-    ### DISTORTIONS ###
-
-    rot_X=[
-            # atom, hopping, weight, target vector
-            [Oy, [0, 0, 0],1./4.,[ 0.0, 0.0,-1.0]],
-            [Oz, [0, 0, 0],1./4.,[ 0.0, 1.0, 0.0]],
-            [Oy, [0, 0, 1],1./4.,[ 0.0, 0.0, 1.0]],
-            [Oz, [0, 1, 0],1./4.,[ 0.0,-1.0, 0.0]]
+    JT_X=[  # atom, hopping, weight, target vector
+            [Ox, [0, 0, 0], 1./6., [-1.0, 0.0, 0.0]],
+            [Ox, [1, 0, 0], 1./6., [ 1.0, 0.0, 0.0]],
+            [Oy, [0, 0, 0], 1./6., [ 0.0, 1.0, 0.0]],
+            [Oy, [0, 1, 0], 1./6., [ 0.0,-1.0, 0.0]],
+            [Oz, [0, 0, 0], 1./6., [ 0.0, 0.0, 1.0]],
+            [Oz, [0, 0, 1], 1./6., [ 0.0, 0.0,-1.0]],
         ]
 
-    rot_Y=[
-            # atom, hopping, weight, target vector
-            [Ox, [0, 0, 0],1./4.,[ 0.0, 0.0, 1.0]],
-            [Oz, [0, 0, 0],1./4.,[-1.0, 0.0, 0.0]],
-            [Ox, [1, 0, 0],1./4.,[ 0.0, 0.0,-1.0]],
-            [Oz, [0, 0, 1],1./4.,[ 1.0, 0.0, 0.0]]
+    JT_Y=[  # atom, hopping, weight, target vector
+            [Ox, [0, 0, 0], 1./6., [ 1.0, 0.0, 0.0]],
+            [Ox, [1, 0, 0], 1./6., [-1.0, 0.0, 0.0]],
+            [Oy, [0, 0, 0], 1./6., [ 0.0,-1.0, 0.0]],
+            [Oy, [0, 1, 0], 1./6., [ 0.0, 1.0, 0.0]],
+            [Oz, [0, 0, 0], 1./6., [ 0.0, 0.0, 1.0]],
+            [Oz, [0, 0, 1], 1./6., [ 0.0, 0.0,-1.0]],
         ]
 
-    rot_Z=[
-            # atom, hopping, weight, target vector
-            [Ox, [0, 0, 0],1./4.,[ 0.0,-1.0, 0.0]],
-            [Oy, [0, 0, 0],1./4.,[ 1.0, 0.0, 0.0]],
-            [Ox, [1, 0, 0],1./4.,[ 0.0, 1.0, 0.0]],
-            [Oy, [0, 1, 0],1./4.,[-1.0, 0.0, 0.0]]
-    ]
+    JT_Z=[  # atom, hopping, weight, target vector
+            [Ox, [0, 0, 0], 1./6., [ 1.0, 0.0, 0.0]],
+            [Ox, [1, 0, 0], 1./6., [-1.0, 0.0, 0.0]],
+            [Oy, [0, 0, 0], 1./6., [ 0.0, 1.0, 0.0]],
+            [Oy, [0, 1, 0], 1./6., [ 0.0,-1.0, 0.0]],
+            [Oz, [0, 0, 0], 1./6., [ 0.0, 0.0,-1.0]],
+            [Oz, [0, 0, 1], 1./6., [ 0.0, 0.0, 1.0]],
+        ]
 
-    x_distortions = analyzer.measure(geom, rot_X)
-    x_angles = np.arctan(x_distortions/BO_dist_x)*180/np.pi
+    # TODO CONSISTENT DEFINITION -> M-POINT DISTORTION
 
-    y_distortions = analyzer.measure(geom, rot_Y)
-    y_angles = np.arctan(y_distortions/BO_dist_y)*180/np.pi
+    dist = np.zeros((geom.supercell[0], geom.supercell[1], geom.supercell[2], 3))
+    dist[:,:,:,0] = measure(geom, JT_X)
+    dist[:,:,:,1] = measure(geom, JT_Y)
+    dist[:,:,:,2] = measure(geom, JT_Z)
 
-    z_distortions = analyzer.measure(geom, rot_Z)
-    z_angles = np.arctan(z_distortions/BO_dist_z)*180/np.pi
+    return dist
 
-    return (x_angles, y_angles, z_angles)
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ================================================================= #
+# ~~~~~~~~~~~~~~~~~~~~~~~ Polarization ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ================================================================= #
 
 def perovskite_polarization(geom, labels, born_charges):
 
@@ -578,6 +558,11 @@ def perovskite_polarization(geom, labels, born_charges):
                 polz[x,y,z] = pol[2]
 
     return polx, poly, polz
+
+
+# ================================================================= #
+# ~~~~~~~~~~~~~~~~~~ Geometry Generation ~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ================================================================= #
 
 
 def generate_vortex_geo(supercell, species, labels, disp, region_size):

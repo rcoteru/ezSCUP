@@ -20,21 +20,18 @@ import ezSCUP.exceptions
 # MODULE STRUCTURE
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 #
-# + class ModeAnalyzer()
-#   - measure(config, pattern)
-#   - restore() # TODO, is this even possible?
+# + func measure(geom, pattern)
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
-class ModeAnalyzer():
+def measure(geom, pattern):
 
-    """ 
-    
+    """
     Projects structural modes (patterns) on a given configuration's
     equilibrium geometry.
 
-    # BASIC USAGE # 
+    # PATTERN DEFINITION # 
 
     Patterns are basically a list of weighted atomic displacementes,
     which are projected onto each unit cell within the supercell. This
@@ -57,62 +54,29 @@ class ModeAnalyzer():
 
     a = sum_over_all_displacements(weigth*dot_product(position, target vector))
 
-    Attributes:
+    Parameters:
     ----------
-    
+
+    - pattern (list): Pattern to be projected.
+
+    Return:
+    ----------
+        - an array the shape of the supercell with the amplitude 
+        of the pattern in each unit cell.
+
     """
 
+    if not isinstance(geom, Geometry):
+        raise ezSCUP.exceptions.InvalidMCConfiguration()
 
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    values = np.zeros(geom.supercell)
 
-    @classmethod
-    def measure(self, geom, pattern):
-
-        """
-
-        Projects the introduced pattern onto a previously loaded supercell.
-        
-        Parameters:
-        ----------
-
-        - pattern (list): Pattern to be projected.
-
-        Return:
-        ----------
-            - an array the shape of the supercell with the amplitude 
-            of the pattern in each unit cell.
-        
-        """
-
-        if not isinstance(geom, Geometry):
-            raise ezSCUP.exceptions.InvalidMCConfiguration()
-
-        values = np.zeros(geom.supercell)
-
-        for x in range(geom.supercell[0]):
-            for y in range(geom.supercell[1]):
-                for z in range(geom.supercell[2]):
-                    cell = np.array([x,y,z])
-                    for atom in pattern:
-                        atom_cell = np.mod(cell + atom[1], geom.supercell)
-                        nx, ny, nz = atom_cell
-                        values[x,y,z] += atom[2]*np.dot(atom[3], geom.displacements[nx,ny,nz,atom[0],:])
-        return values
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-    @classmethod
-    def restore(self, config, pattern, values=None):
-
-        """
-        
-        Reconstructs a geometry from values and pattern
-        
-        """
-
-        # TODO think this one out
-
-        pass
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
+    for x in range(geom.supercell[0]):
+        for y in range(geom.supercell[1]):
+            for z in range(geom.supercell[2]):
+                cell = np.array([x,y,z])
+                for atom in pattern:
+                    atom_cell = np.mod(cell + atom[1], geom.supercell)
+                    nx, ny, nz = atom_cell
+                    values[x,y,z] += atom[2]*np.dot(atom[3], geom.displacements[nx,ny,nz,atom[0],:])
+    return values

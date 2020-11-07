@@ -69,8 +69,18 @@ def finite_hessian(geo, parameter_file, disp=0.001):
     return hessian
 
 
+def get_normal_modes(masses, hessian):
 
+    M = []
+    for m in masses:
+        for _ in range(3):    
+            M.append(m)
+    M = np.diagflat(M)
+    Mi = np.linalg.inv(M)
 
+    normHessian = np.matmul(Mi, hessian)
+    w, v = np.linalg.eigh(normHessian)
 
+    return w, v
 
 

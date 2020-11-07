@@ -43,7 +43,7 @@ class FDFSetting():
 
     """ 
 
-    Structure for n standard (non-block) FDF setting.    
+    Structure for an standard (non-block) FDF setting.    
     Allows easy storage of both value and units (if needed).
 
     Attributes:
@@ -98,16 +98,10 @@ class SCUPHandler():
     
     # BASIC USAGE # 
     
-    Reads simulation data from a given configuration .restart file. 
-    By default this class starts empty, until a file is loaded with 
-    the load() method.
-
-    Basic information about the simulation such as supercell shape,
-    number of cells, elements, number of atoms per cell, strain and  
-    cell information are accessible via attributes.
-
-    The cell structure in this class only constains displacement info.
-    More on cell information storage in ezSCUP.structures.
+    # FDF SETTING STORAGE
+    All settings are stored in the settings dictionary.
+    Non-block settings are stored as FDFSetting objects,
+    while 
 
     Attributes:
     ----------
@@ -115,7 +109,6 @@ class SCUPHandler():
     - scup_exec (string): path to SCALE-UP executable
     - fname (string): loaded input file
     - settings (dict): current FDF settings
-    - original_settings (dict): original FDF settings
 
     """
 
