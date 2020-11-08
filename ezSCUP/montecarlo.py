@@ -108,6 +108,11 @@ class MCSimulationParser:
             self.mc_max_jump         = setup["mc_max_jump"]
             self.lat_output_interval = setup["lat_output_interval"]
 
+            try:
+                self.mc_annealing_rate = setup["mc_annealing_rate"]
+            except:
+                self.mc_annealing_rate = 1
+
             self.fixed_strain_components = setup["fixed_strain_components"]
 
             self.temp   = setup["temp"] 
@@ -503,6 +508,7 @@ class MCSimulation:
         self.mc_max_jump = float(cfg.MC_MAX_JUMP)
         self.lat_output_interval = int(cfg.LATTICE_OUTPUT_INTERVAL)
         self.fixed_strain_components = cfg.FIXED_STRAIN_COMPONENTS
+        self.mc_annealing_rate = cfg.MC_ANNEALING_RATE
         
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -532,6 +538,7 @@ class MCSimulation:
             "mc_steps": self.mc_steps,
             "mc_step_interval": self.mc_step_interval,
             "mc_equilibration_steps": self.mc_equilibration_steps,
+            "mc_annealing_rate": self.mc_annealing_rate,
             "mc_max_jump": self.mc_max_jump,
             "lat_output_interval": self.lat_output_interval,
 
