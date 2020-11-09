@@ -9,7 +9,7 @@ setup(name='ezSCUP',
       url='https://github.com/rcote98/ezSCUP',
       author='Raúl Coterillo',
       author_email='raulcote98@gmail.com',
-      download_url = 'https://github.com/rcote98/ezSCUP/archive/v1.0.tar.gz',
+      download_url = 'https://github.com/rcote98/ezSCUP/archive/v3.0.tar.gz',
       classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",

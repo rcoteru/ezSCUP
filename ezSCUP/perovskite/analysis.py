@@ -16,6 +16,7 @@ import os, sys
 from ezSCUP.perovskite.modes import perovskite_AFD, perovskite_FE
 from ezSCUP.perovskite.modes import perovskite_polarization
 from ezSCUP.montecarlo import MCSimulationParser
+from ezSCUP.plotting import plot_vector, plot_vectors
 from ezSCUP.geometry import Geometry
 
 import ezSCUP.settings as cfg
@@ -42,6 +43,7 @@ class PKAnalyzer(MCSimulationParser):
         self.ffiles = os.path.join(output_folder, "_DATA")
 
         # plot settings
+        self.colors = ["black", "blue", "red", "green", "yellow"]
         self.label_size = 14
         self.figure_pad = 2
 
@@ -76,6 +78,8 @@ class PKAnalyzer(MCSimulationParser):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def AFD_vs_T(self, mode="a", rotate=False, abs=False):
+
+        # TODO rotación plano xy
 
         for i,s in enumerate(self.strain):
             for j,p in enumerate(self.stress):
@@ -124,20 +128,23 @@ class PKAnalyzer(MCSimulationParser):
                     else:
                         plt.figure("AFD" + mode + ".png")
 
-                    plt.errorbar(self.temp, np.abs(rots[:,0,0]), yerr=rots[:,1,0], label=r"AFD$_{x}^{" + mode + "}$", marker ="<") 
-                    plt.errorbar(self.temp, np.abs(rots[:,0,1]), yerr=rots[:,1,1], label=r"AFD$_{y}^{" + mode + "}$", marker =">") 
-                    plt.errorbar(self.temp, np.abs(rots[:,0,2]), yerr=rots[:,1,2], label=r"AFD$_{z}^{" + mode + "}$", marker ="^") 
+                    plt.errorbar(self.temp, np.abs(rots[:,0,0]), yerr=rots[:,1,0], 
+                    label=r"AFD$_{x}^{" + mode + "}$", marker ="<", c=self.colors[0]) 
+                    plt.errorbar(self.temp, np.abs(rots[:,0,1]), yerr=rots[:,1,1], 
+                    label=r"AFD$_{y}^{" + mode + "}$", marker =">", c=self.colors[1]) 
+                    plt.errorbar(self.temp, np.abs(rots[:,0,2]), yerr=rots[:,1,2], 
+                    label=r"AFD$_{z}^{" + mode + "}$", marker ="^", c=self.colors[2]) 
                     plt.ylabel("AFD$^{" + mode + "}$ (deg)", fontsize = self.label_size)
                     plt.xlabel("T (K)", fontsize = self.label_size)
                     plt.legend(frameon=True, fontsize = self.label_size)
                     plt.tight_layout(pad = self.figure_pad)
                     plt.ylim(0, 10)
                     plt.grid(True)
-                    
                     if abs:
                         plt.savefig(os.path.join(fplot, "AFD" + mode + "_abs.png"))
                     else:
                         plt.savefig(os.path.join(fplot, "AFD" + mode + ".png"))
+                    plt.close()
 
                     index = 1
                     data = np.zeros((len(self.temp), 7))
@@ -188,20 +195,24 @@ class PKAnalyzer(MCSimulationParser):
                     ffile = os.path.join(self.ffiles, label)
 
                     plt.figure("FE.png")
-                    plt.errorbar(self.temp, dists[:,0,0], yerr=dists[:,1,0], label=r"FE$_{x}$", marker ="<") 
-                    plt.errorbar(self.temp, dists[:,0,1], yerr=dists[:,1,1], label=r"FE$_{y}$", marker =">") 
-                    plt.errorbar(self.temp, dists[:,0,2], yerr=dists[:,1,2], label=r"FE$_{z}$", marker ="^") 
+                    plt.errorbar(self.temp, dists[:,0,0], yerr=dists[:,1,0], 
+                    label=r"FE$_{x}$", marker ="<", c=self.colors[0]) 
+                    plt.errorbar(self.temp, dists[:,0,1], yerr=dists[:,1,1], 
+                    label=r"FE$_{y}$", marker =">", c=self.colors[1]) 
+                    plt.errorbar(self.temp, dists[:,0,2], yerr=dists[:,1,2], 
+                    label=r"FE$_{z}$", marker ="^", c=self.colors[2]) 
                     plt.ylabel("FE (bohr)", fontsize = self.label_size)
                     plt.xlabel("T (K)", fontsize = self.label_size)
                     plt.legend(frameon=True, fontsize = self.label_size)
                     plt.tight_layout(pad = self.figure_pad)
                     #plt.ylim(0, 10)
                     plt.grid(True)
-                    
                     if abs:
                         plt.savefig(os.path.join(fplot, "FEvsT_abs.png"))
                     else:
                         plt.savefig(os.path.join(fplot, "FEvsT.png"))
+                    plt.close()
+
 
                     index = 1
                     data = np.zeros((len(self.temp), 7))
@@ -251,18 +262,21 @@ class PKAnalyzer(MCSimulationParser):
                     ffile = os.path.join(self.ffiles, label)
 
                     plt.figure("STRAvsT.png")
-                    plt.errorbar(self.temp, strains[:,0,0]*100, yerr=strains[:,1,0]*100, label=r"$\eta_{xx}$", marker ="<") 
-                    plt.errorbar(self.temp, strains[:,0,1]*100, yerr=strains[:,1,1]*100, label=r"$\eta_{yy}$", marker =">") 
-                    plt.errorbar(self.temp, strains[:,0,2]*100, yerr=strains[:,1,2]*100, label=r"$\eta_{zz}$", marker ="^") 
+                    plt.errorbar(self.temp, strains[:,0,0]*100, yerr=strains[:,1,0]*100, 
+                    label=r"$\eta_{xx}$", marker ="<", c=self.colors[0]) 
+                    plt.errorbar(self.temp, strains[:,0,1]*100, yerr=strains[:,1,1]*100, 
+                    label=r"$\eta_{yy}$", marker =">", c=self.colors[1]) 
+                    plt.errorbar(self.temp, strains[:,0,2]*100, yerr=strains[:,1,2]*100, 
+                    label=r"$\eta_{zz}$", marker ="^", c=self.colors[2]) 
                     plt.ylabel(r"$\eta$ (%)", fontsize = self.label_size)
                     plt.xlabel("T (K)", fontsize = self.label_size)
                     plt.legend(frameon=True, fontsize = self.label_size)
                     plt.tight_layout(pad = self.figure_pad)
                     #plt.ylim(0, 10)
                     plt.grid(True)
-                    
                     plt.savefig(os.path.join(fplot, "STRAvsT.png"))
-                    
+                    plt.close()
+
                     index = 1
                     data = np.zeros((len(self.temp), 13))
                     data[:,0] = self.temp
@@ -308,20 +322,23 @@ class PKAnalyzer(MCSimulationParser):
                     ffile = os.path.join(self.ffiles, label)
 
                     plt.figure("POLvsT.png")
-                    plt.errorbar(self.temp, pols[:,0,0], yerr=pols[:,1,0], label=r"$P_{x}$", marker ="<") 
-                    plt.errorbar(self.temp, pols[:,0,1], yerr=pols[:,1,1], label=r"$P_{y}$", marker =">") 
-                    plt.errorbar(self.temp, pols[:,0,2], yerr=pols[:,1,2], label=r"$P_{z}$", marker ="^") 
+                    plt.errorbar(self.temp, pols[:,0,0], yerr=pols[:,1,0], 
+                    label=r"$P_{x}$", marker ="<", c=self.colors[0]) 
+                    plt.errorbar(self.temp, pols[:,0,1], yerr=pols[:,1,1], 
+                    label=r"$P_{y}$", marker =">", c=self.colors[0]) 
+                    plt.errorbar(self.temp, pols[:,0,2], yerr=pols[:,1,2], 
+                    label=r"$P_{z}$", marker ="^", c=self.colors[0]) 
                     plt.ylabel("$P$ (C/m)", fontsize = self.label_size)
                     plt.xlabel("T (K)", fontsize = self.label_size)
                     plt.legend(frameon=True, fontsize = self.label_size)
                     plt.tight_layout(pad = self.figure_pad)
                     #plt.ylim(0, 10)
                     plt.grid(True)
-                    
                     if abs:
                         plt.savefig(os.path.join(fplot, "POLvsT_abs.png"))
                     else:
                         plt.savefig(os.path.join(fplot, "POLvsT.png"))
+                    plt.close()
 
                     index = 1
                     data = np.zeros((len(self.temp), 7))
@@ -340,6 +357,33 @@ class PKAnalyzer(MCSimulationParser):
                         df.to_csv(os.path.join(ffile, "POLvsT.csv"), index=False)
         pass
 
+    def AFD_horizontal_domains(self, layers, mode="a"):
+
+        for i,s in enumerate(self.strain):
+            for j,p in enumerate(self.stress):
+                for k,f in enumerate(self.field):
+                    
+                    label = "s{:d}p{:d}f{:d}".format(i,j,k)
+                    fplot = os.path.join(self.fplots, label)
+                    
+                    for _, t in enumerate(self.temp):
+
+                        pname = "AFD" + mode + "dom_T" + str(int(t)) + ".png"
+                        pname = os.path.join(fplot, pname)
+
+                        geom = self.access_geometry(t, p=p, s=s, f=f)
+                        angles = perovskite_AFD(geom, self.labels, mode=mode, angles=True)
+
+                        if len(layers) == 1:
+                            u, v = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
+                            plot_vector(pname, u, v)
+                        if len(layers) == 2:
+                            u1, v1 = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
+                            u2, v2 = angles[:,:,layers[1],0], angles[:,:,layers[1],1]
+                            plot_vectors(pname, u1, v1, u2, v2)
+                        else:
+                            pass
+        pass
 
 
 

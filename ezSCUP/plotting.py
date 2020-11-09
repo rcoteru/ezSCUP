@@ -1,21 +1,23 @@
 
 import matplotlib.pyplot as plt
 
-def plot_vector(name, u, v, t="Title", save=True):
+def plot_vector(name, u, v, t="", save=True):
 
     """ Plots a vector map. """
 
     plt.figure(name, figsize=[6,6])
     plt.quiver(u,v, pivot="mid")
-    plt.title(t)
+    if t != "":
+        plt.title(t)
     plt.xlabel("x (unit cells)", fontsize=12)
     plt.ylabel("y (unit cells)", fontsize=12)
     plt.tight_layout()
     if save:
         plt.savefig(name)
     plt.draw()
+    plt.close()
 
-def plot_vectors(name, u1, v1, u2, v2, t1="Title1", t2="Title2", save=True):
+def plot_vectors(name, u1, v1, u2, v2, t1="", t2="", save=True):
 
     """ Plots two vector maps side by side. """
 
@@ -24,19 +26,22 @@ def plot_vectors(name, u1, v1, u2, v2, t1="Title1", t2="Title2", save=True):
     fig.canvas.set_window_title(name) 
     
     axs[0].quiver(u1,v1, pivot="mid")
-    axs[0].set_title(t1)
+    if t1 != "":
+        axs[0].set_title(t1)
     axs[0].set_xlabel("x (unit cells)", fontsize=12)
     axs[0].set_ylabel("y (unit cells)", fontsize=12)
     axs[0].invert_yaxis()
 
     axs[1].quiver(u2,v2, pivot="mid")
-    axs[1].set_title(t2)
+    if t2 != "":
+        axs[1].set_title(t2)
     axs[1].set_xlabel("x (unit cells)", fontsize=12)
     axs[1].invert_yaxis()
 
     if save:
         plt.savefig(name)
     plt.draw()
+    plt.close()
 
 
 def plot_heatmap(name, a, t="Title", save=True):
@@ -53,6 +58,7 @@ def plot_heatmap(name, a, t="Title", save=True):
     if save:
         plt.savefig(name)
     plt.draw()
+    plt.close()
 
 def plot_heatmaps(name, a, b, t1="Title1", t2="Title2", save=True):
 
@@ -78,3 +84,4 @@ def plot_heatmaps(name, a, b, t1="Title1", t2="Title2", save=True):
     if save:
         plt.savefig(name)
     plt.draw()
+    plt.close()

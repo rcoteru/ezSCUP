@@ -1,8 +1,6 @@
 """
-
 Executes STO simulations in a temperature range from 20 to 400K in order
 to observe its AFD phase transition.
-
 """
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -17,21 +15,19 @@ import time
 import numpy as np
 
 # ezSCUP imports
-from ezSCUP.montecarlo import MCSimulation, MCSimulationParser
 from ezSCUP.perovskite.analysis import PKAnalyzer
+from ezSCUP.montecarlo import MCSimulation
 import ezSCUP.settings as cfg
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-# ~~~~~~~~~~~~~~~~~~~~ USER DEFINED SETTINGS ~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+#                       SIMULATION SETTINGS                         #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
+# IMPORTANT: Location of the SCALE-UP executable in the system
+SCUP_EXEC = os.getenv("SCUP_EXEC", default = None) 
 OVERWRITE = False                           # overwrite old output folder?
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-# ~~~~~~~~~~~~~~~~~~~~~ SIMULATION SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~ #
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
-launch_simulation = True                    # whether to lauch the simulation
 
 SUPERCELL = [4,4,4]                         # shape of the supercell
 SPECIES = ["Sr", "Ti", "O"]                 # elements in the lattice
@@ -53,17 +49,13 @@ cfg.MC_STEP_INTERVAL = 20                   # MC steps between partial files
 cfg.LATTICE_OUTPUT_INTERVAL = 10            # MC steps between output prints  
 cfg.MC_MAX_JUMP = 0.15                      # MC max jump size (in Angstrom)
 
-show_plots =  True                          # show the created plots?
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-#                     MAIN FUNCTION CALL                            #
+#                        MAIN FUNCTION CALL                         #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 if __name__ == "__main__":
-
-    print(cfg.SCUP_EXEC)
 
     # create simulation class
     sim = MCSimulation()

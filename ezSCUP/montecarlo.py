@@ -1,6 +1,6 @@
 """
-Classes to mass-execute SCALE-UP Monte Carlo simulations.
-in a range of  temperature, strain, stress and electric field settings 
+Classes to mass-execute SCALE-UP Monte Carlo simulations in a range of  
+temperatures, strain, stress and electric field settings 
 with ease.
 """
 
