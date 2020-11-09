@@ -18,6 +18,7 @@ from ezSCUP.perovskite.modes import perovskite_polarization
 from ezSCUP.montecarlo import MCSimulationParser
 from ezSCUP.plotting import plot_vector, plot_vectors
 from ezSCUP.geometry import Geometry
+from ezSCUP.singlepoint import SPRun
 
 import ezSCUP.settings as cfg
 import ezSCUP.exceptions
@@ -355,6 +356,10 @@ class PKAnalyzer(MCSimulationParser):
                         df.to_csv(os.path.join(ffile, "POLvsT_abs.csv"), index=False)
                     else:
                         df.to_csv(os.path.join(ffile, "POLvsT.csv"), index=False)
+        pass
+
+    def ENERGY_vs_T(self):
+
         pass
 
     def AFD_horizontal_domains(self, layers, mode="a"):
