@@ -27,6 +27,8 @@ import ezSCUP.exceptions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 #
 # + class PKAnalyzer()
+# 
+# + class Timer()
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -375,9 +377,9 @@ class PKAnalyzer(MCSimulationParser):
                     plt.errorbar(self.temp, pols[:,0,0], yerr=pols[:,1,0], 
                     label=r"$P_{x}$", marker ="<", c=self.colors[0]) 
                     plt.errorbar(self.temp, pols[:,0,1], yerr=pols[:,1,1], 
-                    label=r"$P_{y}$", marker =">", c=self.colors[0]) 
+                    label=r"$P_{y}$", marker =">", c=self.colors[1]) 
                     plt.errorbar(self.temp, pols[:,0,2], yerr=pols[:,1,2], 
-                    label=r"$P_{z}$", marker ="^", c=self.colors[0]) 
+                    label=r"$P_{z}$", marker ="^", c=self.colors[2]) 
                     plt.ylabel("$P$ (C/m)", fontsize = self.label_size)
                     plt.xlabel("T (K)", fontsize = self.label_size)
                     plt.legend(frameon=True, fontsize = self.label_size)
