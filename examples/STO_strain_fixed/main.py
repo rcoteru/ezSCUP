@@ -78,12 +78,12 @@ if __name__ == "__main__":
     meas = PKAnalyzer(LABELS, BORN_CHARGES, output_folder = "output")
 
     print("\nGenerating AFDa plots...", end = '')
-    meas.AFD_horizontal_domains([0,1], mode="a")
+    meas.AFD_horizontal_domain_vectors([0,1], mode="a")
     meas.AFD_vs_T(mode="a")
     print(" DONE!")
 
     print("\nGenerating AFDi plots...", end = '')
-    meas.AFD_horizontal_domains([0,1], mode="i")
+    meas.AFD_horizontal_domain_vectors([0,1], mode="i")
     meas.AFD_vs_T(mode="i")
     print(" DONE!")
 

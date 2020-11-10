@@ -8,17 +8,16 @@ import pandas as pd
 import numpy as np
 
 # standard library imports
-from copy import deepcopy   # proper array copy
-from pathlib import Path
-import os, sys
+import os, sys, shutil
+import time
 
 # package imports
 from ezSCUP.perovskite.modes import perovskite_AFD, perovskite_FE
 from ezSCUP.perovskite.modes import perovskite_polarization
 from ezSCUP.montecarlo import MCSimulationParser
 from ezSCUP.plotting import plot_vector, plot_vectors
-from ezSCUP.geometry import Geometry
 from ezSCUP.singlepoint import SPRun
+from ezSCUP.geometry import Geometry
 
 import ezSCUP.settings as cfg
 import ezSCUP.exceptions
@@ -63,22 +62,62 @@ class PKAnalyzer(MCSimulationParser):
                 for k,_ in enumerate(self.field):
 
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
+                    
+                    dirs = [
+                            os.path.join(self.ffiles, label),
+                            os.path.join(self.fplots, label),
+                            os.path.join(self.fplots, label, "AFDa"),
+                            os.path.join(self.fplots, label, "AFDi"),
+                            os.path.join(self.fplots, label, "FE"),
+                            os.path.join(self.fplots, label, "POL"),
+                            os.path.join(self.fplots, label, "STRA"),                            
+                            ]
+
+                    for d in dirs:
+                        try:
+                            os.mkdir(d)
+                        except FileExistsError:
+                            pass
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def clear_output(self, data=True, plots=True):
+
+        for i,_ in enumerate(self.strain):
+            for j,_ in enumerate(self.stress):
+                for k,_ in enumerate(self.field):
+
+                    label = "s{:d}p{:d}f{:d}".format(i,j,k)
                     fplot = os.path.join(self.fplots, label)
                     ffile = os.path.join(self.ffiles, label)
 
-                    try:
-                        os.mkdir(fplot)
-                    except FileExistsError:
-                        pass
+                    if plots:
+                        for filename in os.listdir(fplot):
+                            file_path = os.path.join(fplot, filename)
+                            try:
+                                if os.path.isfile(file_path) or os.path.islink(file_path):
+                                    os.unlink(file_path)
+                                elif os.path.isdir(file_path):
+                                    shutil.rmtree(file_path)
+                            except Exception as e:
+                                print('Failed to delete %s. Reason: %s' % (file_path, e))
 
-                    try:
-                        os.mkdir(ffile)
-                    except FileExistsError:
-                        pass
-
+                    if data:
+                        for filename in os.listdir(ffile):
+                            file_path = os.path.join(fplot, filename)
+                            try:
+                                if os.path.isfile(file_path) or os.path.islink(file_path):
+                                    os.unlink(file_path)
+                                elif os.path.isdir(file_path):
+                                    shutil.rmtree(file_path)
+                            except Exception as e:
+                                print('Failed to delete %s. Reason: %s' % (file_path, e))
+                    
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    def AFD_vs_T(self, mode="a", rotate=False, abs=False):
+    def AFD_vs_T(self, mode="a", rotate=None, abs=False):
 
         # TODO rotación plano xy
 
@@ -101,9 +140,8 @@ class PKAnalyzer(MCSimulationParser):
                             xrot, xrot_err = np.mean(angles[:,:,:,0]), np.std(angles[:,:,:,0])
                             yrot, yrot_err = np.mean(angles[:,:,:,1]), np.std(angles[:,:,:,1])
                             zrot, zrot_err = np.mean(angles[:,:,:,2]), np.std(angles[:,:,:,2])
-
-                        # rotate to make the biggest rotation always z axis                        
-                        if rotate:
+       
+                        if rotate == "z": # rotate to make the biggest rotation always z axis      
                             aux = np.abs(np.array([xrot, yrot, zrot]))
                             main_axis = np.argmax(aux)
                             if main_axis == 2:
@@ -115,13 +153,22 @@ class PKAnalyzer(MCSimulationParser):
                             else:
                                 rots[l,0,:] = [yrot, zrot, xrot]
                                 rots[l,1,:] = [yrot_err, zrot_err, xrot_err]
+                        if rotate == "xy": # rotate in-plane to make the x axis always the largest
+                            aux = np.abs(np.array([xrot, yrot]))
+                            main_axis = np.argmax(aux)
+                            if main_axis == 0:
+                                rots[l,0,:] = [xrot, yrot, zrot]
+                                rots[l,1,:] = [xrot_err, yrot_err, zrot_err]
+                            else: 
+                                rots[l,0,:] = [yrot, xrot, zrot]
+                                rots[l,1,:] = [yrot_err, xrot_err, zrot_err]
                         else:
                             rots[l,0,:] = [xrot, yrot, zrot]
                             rots[l,1,:] = [xrot_err, yrot_err, zrot_err]
                         pass
 
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label)
+                    fplot = os.path.join(self.fplots, label, "AFD"+mode)
                     ffile = os.path.join(self.ffiles, label)
 
                     if abs:
@@ -162,8 +209,8 @@ class PKAnalyzer(MCSimulationParser):
                         df.to_csv(os.path.join(ffile, "AFD" + mode + "_abs.csv"), index=False)
                     else:
                         df.to_csv(os.path.join(ffile, "AFD" + mode + ".csv"), index=False)
-        pass
 
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def FE_vs_T(self, abs=False):
@@ -192,7 +239,7 @@ class PKAnalyzer(MCSimulationParser):
                         pass
 
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label)
+                    fplot = os.path.join(self.fplots, label, "FE")
                     ffile = os.path.join(self.ffiles, label)
 
                     plt.figure("FE.png")
@@ -230,8 +277,8 @@ class PKAnalyzer(MCSimulationParser):
                         df.to_csv(os.path.join(ffile, "FEvsT_abs.csv"), index=False)
                     else:
                         df.to_csv(os.path.join(ffile, "FEvsT.csv"), index=False)
-        pass
 
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def STRA_vs_T(self):
@@ -259,7 +306,7 @@ class PKAnalyzer(MCSimulationParser):
                         pass
 
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label)
+                    fplot = os.path.join(self.fplots, label, "STRA")
                     ffile = os.path.join(self.ffiles, label)
 
                     plt.figure("STRAvsT.png")
@@ -291,7 +338,9 @@ class PKAnalyzer(MCSimulationParser):
 
                     df = pd.DataFrame(data, columns=headers)
                     df.to_csv(os.path.join(ffile, "STRAvsT.csv"), index=False)
-        pass
+ 
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def POL_vs_T(self, abs=False):
 
@@ -319,7 +368,7 @@ class PKAnalyzer(MCSimulationParser):
                         pass
 
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label)
+                    fplot = os.path.join(self.fplots, label, "POL")
                     ffile = os.path.join(self.ffiles, label)
 
                     plt.figure("POLvsT.png")
@@ -356,43 +405,271 @@ class PKAnalyzer(MCSimulationParser):
                         df.to_csv(os.path.join(ffile, "POLvsT_abs.csv"), index=False)
                     else:
                         df.to_csv(os.path.join(ffile, "POLvsT.csv"), index=False)
-        pass
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def ENERGY_vs_T(self):
 
         pass
 
-    def AFD_horizontal_domains(self, layers, mode="a"):
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def AFD_horizontal_domain_vectors(self, layers, mode="a"):
 
         for i,s in enumerate(self.strain):
             for j,p in enumerate(self.stress):
                 for k,f in enumerate(self.field):
                     
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label)
+                    fplot = os.path.join(self.fplots, label, "AFD"+mode)
                     
                     for _, t in enumerate(self.temp):
 
                         pname = "AFD" + mode + "dom_T" + str(int(t)) + ".png"
-                        pname = os.path.join(fplot, pname)
 
                         geom = self.access_geometry(t, p=p, s=s, f=f)
                         angles = perovskite_AFD(geom, self.labels, mode=mode, angles=True)
 
                         if len(layers) == 1:
+
+                            plt.figure(pname)
                             u, v = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
-                            plot_vector(pname, u, v)
+                            plt.quiver(u,v, pivot="mid")
+                            plt.xlabel("x (unit cells)", fontsize=12)
+                            plt.ylabel("y (unit cells)", fontsize=12)
+                            plt.tight_layout(pad = self.figure_pad)
+                            plt.savefig(os.path.join(fplot, pname))
+                            plt.close()
+
                         if len(layers) == 2:
+
                             u1, v1 = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
                             u2, v2 = angles[:,:,layers[1],0], angles[:,:,layers[1],1]
-                            plot_vectors(pname, u1, v1, u2, v2)
+                            
+                            fig, axs = plt.subplots(1,2, figsize=[12,6], sharey=True)
+                            fig.canvas.set_window_title(pname) 
+                            plt.tight_layout(pad = self.figure_pad)
+                            
+                            axs[0].quiver(u1,v1, pivot="mid")
+                            axs[0].set_xlabel("x (unit cells)", fontsize=12)
+                            axs[0].set_ylabel("y (unit cells)", fontsize=12)
+                            axs[0].invert_yaxis()
+
+                            axs[1].quiver(u2,v2, pivot="mid")
+                            axs[1].set_xlabel("x (unit cells)", fontsize=12)
+                            axs[1].invert_yaxis()
+
+                            plt.savefig(os.path.join(fplot, pname))
+                            plt.close()
+
                         else:
+                            print("\nPLOTTING ERROR: Unsupported number of layers!")
                             pass
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def FE_horizontal_domain_vectors(self, layers):
+
+        for i,s in enumerate(self.strain):
+            for j,p in enumerate(self.stress):
+                for k,f in enumerate(self.field):
+                    
+                    label = "s{:d}p{:d}f{:d}".format(i,j,k)
+                    fplot = os.path.join(self.fplots, label, "FE")
+                    
+                    for _, t in enumerate(self.temp):
+
+                        pname = "FEdom_T" + str(int(t)) + ".png"
+
+                        geom = self.access_geometry(t, p=p, s=s, f=f)
+                        angles = perovskite_FE(geom, self.labels)
+
+                        if len(layers) == 1:
+
+                            plt.figure(pname)
+                            u, v = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
+                            plt.quiver(u,v, pivot="mid")
+                            plt.xlabel("x (unit cells)", fontsize=12)
+                            plt.ylabel("y (unit cells)", fontsize=12)
+                            plt.tight_layout(pad = self.figure_pad)
+                            plt.savefig(os.path.join(fplot, pname))
+                            plt.close()
+
+                        if len(layers) == 2:
+
+                            u1, v1 = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
+                            u2, v2 = angles[:,:,layers[1],0], angles[:,:,layers[1],1]
+                            
+                            fig, axs = plt.subplots(1,2, figsize=[12,6], sharey=True)
+                            fig.canvas.set_window_title(pname) 
+                            plt.tight_layout(pad = self.figure_pad)
+                            
+                            axs[0].quiver(u1,v1, pivot="mid")
+                            axs[0].set_xlabel("x (unit cells)", fontsize=12)
+                            axs[0].set_ylabel("y (unit cells)", fontsize=12)
+                            axs[0].invert_yaxis()
+
+                            axs[1].quiver(u2,v2, pivot="mid")
+                            axs[1].set_xlabel("x (unit cells)", fontsize=12)
+                            axs[1].invert_yaxis()
+                            
+                            plt.savefig(os.path.join(fplot, pname))
+                            plt.close()
+
+                        else:
+                            print("\nPLOTTING ERROR: Unsupported number of layers!")
+                            pass
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def POL_horizontal_domain_vectors(self, layers):
+
+        for i,s in enumerate(self.strain):
+            for j,p in enumerate(self.stress):
+                for k,f in enumerate(self.field):
+                    
+                    label = "s{:d}p{:d}f{:d}".format(i,j,k)
+                    fplot = os.path.join(self.fplots, label, "POL")
+                    
+                    for _, t in enumerate(self.temp):
+
+                        pname = "POLdom_T" + str(int(t)) + ".png"
+
+                        geom = self.access_geometry(t, p=p, s=s, f=f)
+                        angles = perovskite_polarization(geom, self.labels, self.born_charges)
+
+                        if len(layers) == 1:
+
+                            plt.figure(pname)
+                            u, v = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
+                            plt.quiver(u,v, pivot="mid")
+                            plt.xlabel("x (unit cells)", fontsize=12)
+                            plt.ylabel("y (unit cells)", fontsize=12)
+                            plt.tight_layout(pad = self.figure_pad)
+                            plt.savefig(os.path.join(fplot, pname))
+                            plt.close()
+
+                        if len(layers) == 2:
+
+                            u1, v1 = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
+                            u2, v2 = angles[:,:,layers[1],0], angles[:,:,layers[1],1]
+                            
+                            fig, axs = plt.subplots(1,2, figsize=[12,6], sharey=True)
+                            fig.canvas.set_window_title(pname) 
+                            plt.tight_layout(pad = self.figure_pad)
+                            
+                            axs[0].quiver(u1,v1, pivot="mid")
+                            axs[0].set_xlabel("x (unit cells)", fontsize=12)
+                            axs[0].set_ylabel("y (unit cells)", fontsize=12)
+                            axs[0].invert_yaxis()
+
+                            axs[1].quiver(u2,v2, pivot="mid")
+                            axs[1].set_xlabel("x (unit cells)", fontsize=12)
+                            axs[1].invert_yaxis()
+                            
+                            plt.savefig(os.path.join(fplot, pname))
+                            plt.close()
+
+                        else:
+                            print("\nPLOTTING ERROR: Unsupported number of layers!")
+                            pass
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def POL_stepped(self):
+
+        for i,s in enumerate(self.strain):
+            for j,p in enumerate(self.stress):
+                for k,f in enumerate(self.field):
+                    
+                    label = "s{:d}p{:d}f{:d}".format(i,j,k)
+                    fplot = os.path.join(self.fplots, label, "POL")
+                    
+                    for _, t in enumerate(self.temp):
+
+                        pname = "POLstepped_" + str(int(t)) + ".png"
+
+                        lat = self.access_lattice_output(t, s=s, p=p, f=f)
+
+                        plt.figure(pname)
+                        plt.plot(lat.index, lat["Pol_x(C/m2)"], label="$P_x$", c=self.colors[0])
+                        plt.plot(lat.index, lat["Pol_y(C/m2)"], label="$P_y$", c=self.colors[1])
+                        plt.plot(lat.index, lat["Pol_z(C/m2)"], label="$P_z$", c=self.colors[2])
+                        plt.legend(frameon=True, fontsize = self.label_size)
+                        plt.ylabel("$P$ (C/m2)", fontsize = self.label_size)
+                        plt.xlabel("MC Step", fontsize = self.label_size)
+                        plt.grid(True)
+                        plt.savefig(os.path.join(fplot, pname))
+                        plt.close()
+
+
         pass
 
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
+# ================================================================= #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ================================================================= #
 
+
+class Timer:
+
+    timers = dict()
+
+    class TimerError(Exception):
+
+        """A custom exception used to report errors in use of Timer class"""
+
+    def __init__(
+        self,
+        name=None,
+        text="Elapsed time: {:0.4f} seconds",
+        logger=print,
+    ):
+        self._start_time = None
+        self.name = name
+        self.text = text
+        self.logger = logger
+
+        # Add new named timers to dictionary of timers
+        if name:
+            self.timers.setdefault(name, 0)
+
+    def start(self):
+
+        """Start a new timer"""
+
+        if self._start_time is not None:
+            raise self.TimerError(f"Timer is running. Use .stop() to stop it")
+
+        self._start_time = time.perf_counter()
+
+    def stop(self):
+
+        """Stop the timer, and report the elapsed time"""
+        
+        if self._start_time is None:
+            raise self.TimerError(f"Timer is not running. Use .start() to start it")
+
+        elapsed_time = time.perf_counter() - self._start_time
+        self._start_time = None
+
+        if self.logger:
+            self.logger(self.text.format(elapsed_time))
+        if self.name:
+            self.timers[self.name] += elapsed_time
+
+        return elapsed_time
 
 
 
