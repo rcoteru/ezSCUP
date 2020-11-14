@@ -12,8 +12,7 @@ import os, sys, shutil
 import time
 
 # package imports
-from ezSCUP.perovskite.modes import perovskite_AFD, perovskite_FE
-from ezSCUP.perovskite.modes import perovskite_polarization
+from ezSCUP.srtio3.modes import STO_AFD, STO_FE, STO_AFE, STO_OD, STO_POL
 from ezSCUP.montecarlo import MCSimulationParser
 from ezSCUP.plotting import plot_vector, plot_vectors
 from ezSCUP.singlepoint import SPRun
@@ -26,21 +25,20 @@ import ezSCUP.exceptions
 # MODULE STRUCTURE
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 #
-# + class PKAnalyzer()
+# + class STOAnalyzer()
 # 
 # + class Timer()
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-class PKAnalyzer(MCSimulationParser):
+class STOAnalyzer(MCSimulationParser):
 
-    def __init__(self, labels, born_charges,
-        output_folder="output"):
+    def __init__(self, output_folder="output"):
+
+        #CHECK IF ITS AN STO SIMULATION
         
         super().__init__(output_folder=output_folder)
 
-        self.labels = labels
-        self.born_charges = born_charges
         self.fplots = os.path.join(output_folder, "_PLOTS")
         self.ffiles = os.path.join(output_folder, "_DATA")
 
@@ -71,6 +69,8 @@ class PKAnalyzer(MCSimulationParser):
                             os.path.join(self.fplots, label, "AFDa"),
                             os.path.join(self.fplots, label, "AFDi"),
                             os.path.join(self.fplots, label, "FE"),
+                            os.path.join(self.fplots, label, "AFE"),
+                            os.path.join(self.fplots, label, "OD"),
                             os.path.join(self.fplots, label, "POL"),
                             os.path.join(self.fplots, label, "STRA"),                            
                             ]
@@ -132,7 +132,7 @@ class PKAnalyzer(MCSimulationParser):
 
                         geom = self.access_geometry(t, s=s, p=p, f=f)
 
-                        angles = perovskite_AFD(geom, self.labels, mode=mode, angles=True)
+                        angles = STO_AFD(geom, mode=mode, angles=True)
 
                         if abs:
                             xrot, xrot_err = np.mean(np.abs(angles[:,:,:,0])), np.std(np.abs(angles[:,:,:,0]))
@@ -225,7 +225,10 @@ class PKAnalyzer(MCSimulationParser):
                     for l, t in enumerate(self.temp):
 
                         geom = self.access_geometry(t, s=s, p=p, f=f)
-                        disps = perovskite_FE(geom, self.labels)
+                        disps = STO_FE(geom)
+
+                        print("T:", t)
+                        print(np.max(np.abs(disps)), np.min(np.abs(disps)))
 
                         if abs:
                             xdist, xdist_err = np.mean(np.abs(disps[:,:,:,0])), np.std(np.abs(disps[:,:,:,0]))
@@ -279,6 +282,145 @@ class PKAnalyzer(MCSimulationParser):
                         df.to_csv(os.path.join(ffile, "FEvsT_abs.csv"), index=False)
                     else:
                         df.to_csv(os.path.join(ffile, "FEvsT.csv"), index=False)
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def AFE_vs_T(self, abs=False):
+
+        for i,s in enumerate(self.strain):
+            for j,p in enumerate(self.stress):
+                for k,f in enumerate(self.field):
+                    
+                    dists = np.zeros((len(self.temp), 2, 3))
+                    for l, t in enumerate(self.temp):
+
+                        geom = self.access_geometry(t, s=s, p=p, f=f)
+                        disps = STO_AFE(geom)
+
+                        print("T:", t)
+                        print(np.max(np.abs(disps)), np.min(np.abs(disps)))
+
+                        if abs:
+                            xdist, xdist_err = np.mean(np.abs(disps[:,:,:,0])), np.std(np.abs(disps[:,:,:,0]))
+                            ydist, ydist_err = np.mean(np.abs(disps[:,:,:,1])), np.std(np.abs(disps[:,:,:,1]))
+                            zdist, zdist_err = np.mean(np.abs(disps[:,:,:,2])), np.std(np.abs(disps[:,:,:,2]))
+                        else:
+                            xdist, xdist_err = np.mean(disps[:,:,:,0]), np.std(disps[:,:,:,0])
+                            ydist, ydist_err = np.mean(disps[:,:,:,1]), np.std(disps[:,:,:,1])
+                            zdist, zdist_err = np.mean(disps[:,:,:,2]), np.std(disps[:,:,:,2])
+
+                        dists[l,0,:] = [xdist, ydist, zdist]
+                        dists[l,1,:] = [xdist_err, ydist_err, zdist_err]
+                        pass
+
+                    label = "s{:d}p{:d}f{:d}".format(i,j,k)
+                    fplot = os.path.join(self.fplots, label, "AFE")
+                    ffile = os.path.join(self.ffiles, label)
+
+                    plt.figure("AFE.png")
+                    plt.errorbar(self.temp, dists[:,0,0], yerr=dists[:,1,0], 
+                    label=r"AFE$_{x}$", marker ="<", c=self.colors[0]) 
+                    plt.errorbar(self.temp, dists[:,0,1], yerr=dists[:,1,1], 
+                    label=r"AFE$_{y}$", marker =">", c=self.colors[1]) 
+                    plt.errorbar(self.temp, dists[:,0,2], yerr=dists[:,1,2], 
+                    label=r"AFE$_{z}$", marker ="^", c=self.colors[2]) 
+                    plt.ylabel("AFE (bohr)", fontsize = self.label_size)
+                    plt.xlabel("T (K)", fontsize = self.label_size)
+                    plt.legend(frameon=True, fontsize = self.label_size)
+                    plt.tight_layout(pad = self.figure_pad)
+                    #plt.ylim(0, 10)
+                    plt.grid(True)
+                    if abs:
+                        plt.savefig(os.path.join(fplot, "AFEvsT_abs.png"))
+                    else:
+                        plt.savefig(os.path.join(fplot, "AFEvsT.png"))
+                    plt.close()
+
+
+                    index = 1
+                    data = np.zeros((len(self.temp), 7))
+                    data[:,0] = self.temp
+                    for dim in range(3):
+                        for value in range(2): 
+                            data[:,index] = dists[:,value, dim]
+                            index += 1
+                    headers = ["temp", "xdist", "xdist_err", "ydist", 
+                    "ydist_err", "zdist", "zdist_err"]
+
+                    df = pd.DataFrame(data, columns=headers)
+                    if abs:
+                        df.to_csv(os.path.join(ffile, "AFEvsT_abs.csv"), index=False)
+                    else:
+                        df.to_csv(os.path.join(ffile, "AFEvsT.csv"), index=False)
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def OD_vs_T(self, abs=False):
+
+        for i,s in enumerate(self.strain):
+            for j,p in enumerate(self.stress):
+                for k,f in enumerate(self.field):
+                    
+                    dists = np.zeros((len(self.temp), 2, 3))
+                    for l, t in enumerate(self.temp):
+
+                        geom = self.access_geometry(t, s=s, p=p, f=f)
+                        disps = STO_OD(geom)
+
+                        if abs:
+                            xdist, xdist_err = np.mean(np.abs(disps[:,:,:,0])), np.std(np.abs(disps[:,:,:,0]))
+                            ydist, ydist_err = np.mean(np.abs(disps[:,:,:,1])), np.std(np.abs(disps[:,:,:,1]))
+                            zdist, zdist_err = np.mean(np.abs(disps[:,:,:,2])), np.std(np.abs(disps[:,:,:,2]))
+                        else:
+                            xdist, xdist_err = np.mean(disps[:,:,:,0]), np.std(disps[:,:,:,0])
+                            ydist, ydist_err = np.mean(disps[:,:,:,1]), np.std(disps[:,:,:,1])
+                            zdist, zdist_err = np.mean(disps[:,:,:,2]), np.std(disps[:,:,:,2])
+
+                        dists[l,0,:] = [xdist, ydist, zdist]
+                        dists[l,1,:] = [xdist_err, ydist_err, zdist_err]
+                        pass
+
+                    label = "s{:d}p{:d}f{:d}".format(i,j,k)
+                    fplot = os.path.join(self.fplots, label, "OD")
+                    ffile = os.path.join(self.ffiles, label)
+
+                    plt.figure("OD.png")
+                    plt.errorbar(self.temp, dists[:,0,0], yerr=dists[:,1,0], 
+                    label=r"OD$_{x}$", marker ="<", c=self.colors[0]) 
+                    plt.errorbar(self.temp, dists[:,0,1], yerr=dists[:,1,1], 
+                    label=r"OD$_{y}$", marker =">", c=self.colors[1]) 
+                    plt.errorbar(self.temp, dists[:,0,2], yerr=dists[:,1,2], 
+                    label=r"OD$_{z}$", marker ="^", c=self.colors[2]) 
+                    plt.ylabel("FE (bohr)", fontsize = self.label_size)
+                    plt.xlabel("T (K)", fontsize = self.label_size)
+                    plt.legend(frameon=True, fontsize = self.label_size)
+                    plt.tight_layout(pad = self.figure_pad)
+                    #plt.ylim(0, 10)
+                    plt.grid(True)
+                    if abs:
+                        plt.savefig(os.path.join(fplot, "ODvsT_abs.png"))
+                    else:
+                        plt.savefig(os.path.join(fplot, "ODvsT.png"))
+                    plt.close()
+
+
+                    index = 1
+                    data = np.zeros((len(self.temp), 7))
+                    data[:,0] = self.temp
+                    for dim in range(3):
+                        for value in range(2): 
+                            data[:,index] = dists[:,value, dim]
+                            index += 1
+                    headers = ["temp", "xdist", "xdist_err", "ydist", 
+                    "ydist_err", "zdist", "zdist_err"]
+
+                    df = pd.DataFrame(data, columns=headers)
+                    if abs:
+                        df.to_csv(os.path.join(ffile, "ODvsT_abs.csv"), index=False)
+                    else:
+                        df.to_csv(os.path.join(ffile, "ODvsT.csv"), index=False)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -354,7 +496,7 @@ class PKAnalyzer(MCSimulationParser):
                     for l, t in enumerate(self.temp):
 
                         geom = self.access_geometry(t, s=s, p=p, f=f)
-                        disps = perovskite_polarization(geom, self.labels, self.born_charges)
+                        disps = STO_POL(geom)
 
                         if abs:
                             xdist, xdist_err = np.mean(np.abs(disps[:,:,:,0])), np.std(np.abs(disps[:,:,:,0]))
@@ -432,7 +574,7 @@ class PKAnalyzer(MCSimulationParser):
                         pname = "AFD" + mode + "dom_T" + str(int(t)) + ".png"
 
                         geom = self.access_geometry(t, p=p, s=s, f=f)
-                        angles = perovskite_AFD(geom, self.labels, mode=mode, angles=True)
+                        angles = STO_AFD(geom, mode=mode, angles=True)
 
                         if len(layers) == 1:
 
@@ -487,7 +629,7 @@ class PKAnalyzer(MCSimulationParser):
                         pname = "FEdom_T" + str(int(t)) + ".png"
 
                         geom = self.access_geometry(t, p=p, s=s, f=f)
-                        angles = perovskite_FE(geom, self.labels)
+                        angles = STO_FE(geom)
 
                         if len(layers) == 1:
 
@@ -542,12 +684,12 @@ class PKAnalyzer(MCSimulationParser):
                         pname = "POLdom_T" + str(int(t)) + ".png"
 
                         geom = self.access_geometry(t, p=p, s=s, f=f)
-                        angles = perovskite_polarization(geom, self.labels, self.born_charges)
+                        pols = STO_POL(geom)
 
                         if len(layers) == 1:
 
                             plt.figure(pname)
-                            u, v = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
+                            u, v = pols[:,:,layers[0],0], pols[:,:,layers[0],1]
                             plt.quiver(u,v, pivot="mid")
                             plt.xlabel("x (unit cells)", fontsize=12)
                             plt.ylabel("y (unit cells)", fontsize=12)
@@ -557,8 +699,8 @@ class PKAnalyzer(MCSimulationParser):
 
                         if len(layers) == 2:
 
-                            u1, v1 = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
-                            u2, v2 = angles[:,:,layers[1],0], angles[:,:,layers[1],1]
+                            u1, v1 = pols[:,:,layers[0],0], pols[:,:,layers[0],1]
+                            u2, v2 = pols[:,:,layers[1],0], pols[:,:,layers[1],1]
                             
                             fig, axs = plt.subplots(1,2, figsize=[12,6], sharey=True)
                             fig.canvas.set_window_title(pname) 

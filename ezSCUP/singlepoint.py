@@ -23,9 +23,8 @@ import ezSCUP.exceptions
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-def SPRun(parameter_file, geom):
+def SPRun(parameter_file, geom, name="SPDefaultName", clean=True):
 
-    name = "SPDefaultName"
     sim = SP_SCUPHandler(name, parameter_file, cfg.SCUP_EXEC)
 
     sim.settings["supercell"] = [list(geom.supercell)]
@@ -61,9 +60,10 @@ def SPRun(parameter_file, geom):
     f.close()
 
     # cleanup
-    os.remove(name + ".restart")
-    os.remove(name + ".out")
-    os.remove(name + "_FINAL.REF")
-    os.remove(name + "_FINAL.restart")
+    if clean:
+        os.remove(name + ".restart")
+        os.remove(name + ".out")
+        os.remove(name + "_FINAL.REF")
+        os.remove(name + "_FINAL.restart")
         
     return energy
