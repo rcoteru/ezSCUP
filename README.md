@@ -4,7 +4,7 @@ ezSCUP is a Python module designed to facilitate the execution of SCALE-UP simul
 
 SCALE-UP (short for **S**econd-principles **C**omputational **A**pproach for **L**attice and **E**lectrons) is a Second-Principles DFT simulation program written in Fortran and developed by researchers from the University of Cantabria (UC, Spain) and the Luxembourg Institute of Science and Technology (LIST), as well as by a number of collaborators [[+info]](https://www.secondprinciples.unican.es/).  
 
-This module has been developed as an integral part of my Bachelor's final-year thesis on structural transititions within strontium titanate (SrTiO3), a perovskite oxide. Therefore, while the base package contains most of its generic fucntionality, everything within the submodule "*[ezSCUP/srtio3](ezSCUP/srtio3)*" is designed specifically towards this material.
+This module has been developed as an integral part of my Bachelor's final-year thesis on structural transititions within strontium titanate (SrTiO3), a perovskite oxide. Therefore, while the base package contains most of its generic fucntionality, everything within the submodule " *[ezSCUP/srtio3](ezSCUP/srtio3)* " is designed specifically towards this material.
 
 
 ## Features
