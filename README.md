@@ -9,13 +9,15 @@ This module has been developed as an integral part of my Bachelor's final-year t
 
 ## Features
 
+- Perform single-point and geometry optimization (CGD) calculations.
 - Schedule simulation runs in a grid of temperatures, strains, pressures and electric fields.
 - Set starting geometries for each simulation run: simulate everything sequentially or independently.
-- Easy output access and management for each configuration through a Python interface
+- Easy output access and management for each configuration through Python data structures.
 - Generate an equilibrium geometry for each Monte Carlo simulation.
-- Allows for the projection of structural modes (i.e. AFD or FE modes) onto said equilibrium geometry.
+- Obtain the normal vibrational modes of a material through Hessian diagonalization. 
+- Projection of the resulting structural modes (i.e. AFD or FE modes in SrTiO3) onto any geometry.
 - Calculation of macroscopic polarization through the use of Born effective charges.
-- Observe domain structures through a per-unit-cell application of the two previous features.
+- Observe domain structures through a per-unit-cell application of the previous features.
 
 ## Installation
 
