@@ -13,7 +13,7 @@ This module has been developed as an integral part of my Bachelor's final-year t
 - Schedule Monte Carlo simulation runs in a grid of temperatures, strains, pressures and electric fields.
 - Set starting geometries for each simulation run: simulate everything sequentially or independently.
 - Easy output access and management for each configuration through Python data structures.
-- Generate an equilibrium geometry for each Monte Carlo simulation.
+- Generates an equilibrium geometry for each Monte Carlo configuration.
 - Obtain the normal vibrational modes of a material through Hessian diagonalization. 
 - Projection of the resulting structural modes (i.e. AFD or FE modes in SrTiO3) onto any geometry.
 - Calculation of macroscopic polarization through the use of Born effective charges.
