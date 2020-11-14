@@ -10,7 +10,7 @@ This module has been developed as an integral part of my Bachelor's final-year t
 ## Features
 
 - Perform single-point and geometry optimization (CGD) calculations.
-- Schedule simulation runs in a grid of temperatures, strains, pressures and electric fields.
+- Schedule Monte Carlo simulation runs in a grid of temperatures, strains, pressures and electric fields.
 - Set starting geometries for each simulation run: simulate everything sequentially or independently.
 - Easy output access and management for each configuration through Python data structures.
 - Generate an equilibrium geometry for each Monte Carlo simulation.
