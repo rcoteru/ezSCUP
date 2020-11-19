@@ -4,6 +4,7 @@ Class created to analyze the output of MC simulations.
 
 # third party imports
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import pandas as pd
 import numpy as np
 
@@ -12,7 +13,7 @@ import os, sys, shutil
 import time
 
 # package imports
-from ezSCUP.srtio3.modes import STO_AFD, STO_FE, STO_AFE, STO_OD, STO_POL
+from ezSCUP.srtio3.modes import STO_ROT, STO_AFD, STO_FE, STO_AFE, STO_OD, STO_POL
 from ezSCUP.montecarlo import MCSimulationParser
 from ezSCUP.plotting import plot_vector, plot_vectors
 from ezSCUP.singlepoint import SPRun
@@ -66,6 +67,7 @@ class STOAnalyzer(MCSimulationParser):
                     dirs = [
                             os.path.join(self.ffiles, label),
                             os.path.join(self.fplots, label),
+                            os.path.join(self.fplots, label, "ROT"),
                             os.path.join(self.fplots, label, "AFDa"),
                             os.path.join(self.fplots, label, "AFDi"),
                             os.path.join(self.fplots, label, "FE"),
@@ -116,6 +118,78 @@ class STOAnalyzer(MCSimulationParser):
                             except Exception as e:
                                 print('Failed to delete %s. Reason: %s' % (file_path, e))
                     
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def ROT_vs_T(self, abs=False):
+
+        for i,s in enumerate(self.strain):
+            for j,p in enumerate(self.stress):
+                for k,f in enumerate(self.field):
+                    
+                    rots = np.zeros((len(self.temp), 2, 3))
+                    for l, t in enumerate(self.temp):
+
+                        geom = self.access_geometry(t, s=s, p=p, f=f)
+
+                        angles = STO_ROT(geom, angles=True)
+
+                        if abs:
+                            xrot, xrot_err = np.mean(np.abs(angles[:,:,:,0])), np.std(np.abs(angles[:,:,:,0]))
+                            yrot, yrot_err = np.mean(np.abs(angles[:,:,:,1])), np.std(np.abs(angles[:,:,:,1]))
+                            zrot, zrot_err = np.mean(np.abs(angles[:,:,:,2])), np.std(np.abs(angles[:,:,:,2]))
+                        else:
+                            xrot, xrot_err = np.mean(angles[:,:,:,0]), np.std(angles[:,:,:,0])
+                            yrot, yrot_err = np.mean(angles[:,:,:,1]), np.std(angles[:,:,:,1])
+                            zrot, zrot_err = np.mean(angles[:,:,:,2]), np.std(angles[:,:,:,2])
+       
+                        rots[l,0,:] = [xrot, yrot, zrot]
+                        rots[l,1,:] = [xrot_err, yrot_err, zrot_err]
+
+
+                    label = "s{:d}p{:d}f{:d}".format(i,j,k)
+                    fplot = os.path.join(self.fplots, label, "ROT")
+                    ffile = os.path.join(self.ffiles, label)
+
+                    if abs:
+                        plt.figure("ROT_abs.png")
+                    else:
+                        plt.figure("ROT.png")
+
+                    plt.errorbar(self.temp, np.abs(rots[:,0,0]), yerr=rots[:,1,0], 
+                    label=r"ROT$_{x}", marker ="<", c=self.colors[0]) 
+                    plt.errorbar(self.temp, np.abs(rots[:,0,1]), yerr=rots[:,1,1], 
+                    label=r"ROT$_{y}", marker =">", c=self.colors[1]) 
+                    plt.errorbar(self.temp, np.abs(rots[:,0,2]), yerr=rots[:,1,2], 
+                    label=r"ROT$_{z}", marker ="^", c=self.colors[2]) 
+                    plt.ylabel("ROT (deg)", fontsize = self.label_size)
+                    plt.xlabel("T (K)", fontsize = self.label_size)
+                    plt.legend(frameon=True, fontsize = self.label_size)
+                    plt.tight_layout(pad = self.figure_pad)
+                    plt.ylim(0, 10)
+                    plt.grid(True)
+                    if abs:
+                        plt.savefig(os.path.join(fplot, "ROT_abs.png"))
+                    else:
+                        plt.savefig(os.path.join(fplot, "ROT.png"))
+                    plt.close()
+
+                    index = 1
+                    data = np.zeros((len(self.temp), 7))
+                    data[:,0] = self.temp
+                    for dim in range(3):
+                        for value in range(2): 
+                            data[:,index] = rots[:,value, dim]
+                            index += 1
+                    headers = ["temp", "xrot", "xrot_err", "yrot", 
+                    "yrot_err", "zrot", "zrot_err"]
+
+                    df = pd.DataFrame(data, columns=headers)
+                    if abs:
+                        df.to_csv(os.path.join(ffile, "ROT_abs.csv"), index=False)
+                    else:
+                        df.to_csv(os.path.join(ffile, "ROT.csv"), index=False)
+
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -227,9 +301,6 @@ class STOAnalyzer(MCSimulationParser):
                         geom = self.access_geometry(t, s=s, p=p, f=f)
                         disps = STO_FE(geom)
 
-                        print("T:", t)
-                        print(np.max(np.abs(disps)), np.min(np.abs(disps)))
-
                         if abs:
                             xdist, xdist_err = np.mean(np.abs(disps[:,:,:,0])), np.std(np.abs(disps[:,:,:,0]))
                             ydist, ydist_err = np.mean(np.abs(disps[:,:,:,1])), np.std(np.abs(disps[:,:,:,1]))
@@ -297,9 +368,6 @@ class STOAnalyzer(MCSimulationParser):
 
                         geom = self.access_geometry(t, s=s, p=p, f=f)
                         disps = STO_AFE(geom)
-
-                        print("T:", t)
-                        print(np.max(np.abs(disps)), np.min(np.abs(disps)))
 
                         if abs:
                             xdist, xdist_err = np.mean(np.abs(disps[:,:,:,0])), np.std(np.abs(disps[:,:,:,0]))
@@ -557,10 +625,75 @@ class STOAnalyzer(MCSimulationParser):
 
         pass
 
+    
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    def AFD_horizontal_domain_vectors(self, layers, mode="a"):
+    def ROT_horizontal_domain_vectors(self, layers):
+
+        for i,s in enumerate(self.strain):
+            for j,p in enumerate(self.stress):
+                for k,f in enumerate(self.field):
+                    
+                    label = "s{:d}p{:d}f{:d}".format(i,j,k)
+                    fplot = os.path.join(self.fplots, label, "ROT")
+                    
+                    for _, t in enumerate(self.temp):
+
+                        pname = "ROTdom_T" + str(int(t)) + ".png"
+
+                        geom = self.access_geometry(t, p=p, s=s, f=f)
+                        angles = STO_ROT(geom, angles=True)
+
+                        X, Y = np.meshgrid(range(geom.supercell[0]), range(geom.supercell[1]))
+
+                        if len(layers) == 1:
+
+                            plt.figure(pname)
+                            u, v = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
+                            plt.quiver(X, Y, u, v, pivot="mid")
+                            plt.xlabel("x (unit cells)", fontsize = self.label_size)
+                            plt.ylabel("y (unit cells)", fontsize = self.label_size)
+                            plt.tight_layout(pad = self.figure_pad)
+                            plt.savefig(os.path.join(fplot, pname))
+                            plt.close()
+
+                        if len(layers) == 2:
+
+                            u1, v1 = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
+                            u2, v2 = angles[:,:,layers[1],0], angles[:,:,layers[1],1]
+                            
+                            fig, axs = plt.subplots(1,2, figsize=[13,7], sharey=True)
+                            fig.suptitle("Octahedral Rotation @ $T={:d}$ K".format(int(t)), fontsize = self.label_size)
+                            fig.canvas.set_window_title(pname) 
+                            plt.tight_layout(pad = self.figure_pad)
+              
+                            m = np.mean(np.hypot(u1, v1))
+                            q0 = axs[0].quiver(X, Y, u1, v1, pivot="mid", width=0.008, headwidth=5, minlength=3, minshaft=3)
+                            axs[0].quiverkey(q0, 0.9, 1.03, m, '{:2.1f} º'.format(m), labelpos='E')
+                            axs[0].set_title("$z={:d}$".format(layers[0]), fontsize = self.label_size)
+                            axs[0].set_xlabel("$x$ (unit cells)", fontsize = self.label_size)
+                            axs[0].set_ylabel("y (unit cells)", fontsize = self.label_size)
+                            axs[0].invert_yaxis()
+
+                            m = np.mean(np.hypot(u2, v2))
+                            q1 = axs[1].quiver(X, Y, u2, v2, pivot="mid", width=0.008, headwidth=5, minlength=3, minshaft=3)
+                            axs[1].quiverkey(q1, 0.9, 1.03, m, '{:2.1f} º'.format(m), labelpos='E')
+                            axs[1].set_title("$z={:d}$".format(layers[1]), fontsize = self.label_size)
+                            axs[1].set_xlabel("$x$ (unit cells)", fontsize = self.label_size)
+                            axs[1].invert_yaxis()
+
+                            plt.savefig(os.path.join(fplot, pname))
+                            plt.close()
+
+                        else:
+                            print("\nPLOTTING ERROR: Unsupported number of layers!")
+                            pass
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def AFD_horizontal_domain_vectors(self, layers, mode="a", symmetry=True):
 
         for i,s in enumerate(self.strain):
             for j,p in enumerate(self.stress):
@@ -571,18 +704,27 @@ class STOAnalyzer(MCSimulationParser):
                     
                     for _, t in enumerate(self.temp):
 
-                        pname = "AFD" + mode + "dom_T" + str(int(t)) + ".png"
+                        if symmetry:
+                            pname = "AFD" + mode + "_sym_dom_T" + str(int(t)) + ".png"
+                        else:
+                            pname = "AFD" + mode + "_nosym_dom_T" + str(int(t)) + ".png"
 
                         geom = self.access_geometry(t, p=p, s=s, f=f)
-                        angles = STO_AFD(geom, mode=mode, angles=True)
+
+                        if symmetry:
+                            angles = STO_AFD(geom, mode=mode, angles=True, symmetry=True)
+                        else:
+                            angles = STO_AFD(geom, mode=mode, angles=True, symmetry=False)
+
+                        X, Y = np.meshgrid(range(geom.supercell[0]), range(geom.supercell[1]))
 
                         if len(layers) == 1:
 
                             plt.figure(pname)
                             u, v = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
                             plt.quiver(u,v, pivot="mid")
-                            plt.xlabel("x (unit cells)", fontsize=12)
-                            plt.ylabel("y (unit cells)", fontsize=12)
+                            plt.xlabel("x (unit cells)", fontsize= self.label_size)
+                            plt.ylabel("y (unit cells)", fontsize= self.label_size)
                             plt.tight_layout(pad = self.figure_pad)
                             plt.savefig(os.path.join(fplot, pname))
                             plt.close()
@@ -592,21 +734,32 @@ class STOAnalyzer(MCSimulationParser):
                             u1, v1 = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
                             u2, v2 = angles[:,:,layers[1],0], angles[:,:,layers[1],1]
                             
-                            fig, axs = plt.subplots(1,2, figsize=[12,6], sharey=True)
+                            fig, axs = plt.subplots(1,2, figsize=[13,7], sharey=True)
+                            if symmetry:
+                                fig.suptitle("AFD{:s} Mode Rotation @ $T={:d}$ K (with symmetry corrections)".format(mode, int(t)), fontsize = self.label_size)
+                            else:
+                                fig.suptitle("AFD{:s} Mode Rotation @ $T={:d}$ K (without symmetry corrections)".format(mode, int(t)), fontsize = self.label_size)
                             fig.canvas.set_window_title(pname) 
                             plt.tight_layout(pad = self.figure_pad)
-                            
-                            axs[0].quiver(u1,v1, pivot="mid")
-                            axs[0].set_xlabel("x (unit cells)", fontsize=12)
-                            axs[0].set_ylabel("y (unit cells)", fontsize=12)
+              
+                            m = np.mean(np.hypot(u1, v1))
+                            q0 = axs[0].quiver(X, Y, u1, v1, pivot="mid", width=0.008, headwidth=5, minlength=3, minshaft=3)
+                            axs[0].quiverkey(q0, 0.9, 1.03, m, '{:2.1f} º'.format(m), labelpos='E')
+                            axs[0].set_title("$z={:d}$".format(layers[0]), fontsize = self.label_size)
+                            axs[0].set_xlabel("$x$ (unit cells)", fontsize = self.label_size)
+                            axs[0].set_ylabel("$y$ (unit cells)", fontsize = self.label_size)
                             axs[0].invert_yaxis()
 
-                            axs[1].quiver(u2,v2, pivot="mid")
-                            axs[1].set_xlabel("x (unit cells)", fontsize=12)
+                            m = np.mean(np.hypot(u2, v2))
+                            q1 = axs[1].quiver(X, Y, u2, v2, pivot="mid", width=0.008, headwidth=5, minlength=3, minshaft=3)
+                            axs[1].quiverkey(q1, 0.9, 1.03, m, '{:2.1f} º'.format(m), labelpos='E')
+                            axs[1].set_title("$z={:d}$".format(layers[1]), fontsize = self.label_size)
+                            axs[1].set_xlabel("$x$ (unit cells)", fontsize = self.label_size)
                             axs[1].invert_yaxis()
 
                             plt.savefig(os.path.join(fplot, pname))
                             plt.close()
+
 
                         else:
                             print("\nPLOTTING ERROR: Unsupported number of layers!")
@@ -631,13 +784,15 @@ class STOAnalyzer(MCSimulationParser):
                         geom = self.access_geometry(t, p=p, s=s, f=f)
                         angles = STO_FE(geom)
 
+                        X, Y = np.meshgrid(range(geom.supercell[0]), range(geom.supercell[1]))
+
                         if len(layers) == 1:
 
                             plt.figure(pname)
                             u, v = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
                             plt.quiver(u,v, pivot="mid")
-                            plt.xlabel("x (unit cells)", fontsize=12)
-                            plt.ylabel("y (unit cells)", fontsize=12)
+                            plt.xlabel("$x$ (unit cells)", fontsize = self.label_size)
+                            plt.ylabel("$y$ (unit cells)", fontsize = self.label_size)
                             plt.tight_layout(pad = self.figure_pad)
                             plt.savefig(os.path.join(fplot, pname))
                             plt.close()
@@ -647,19 +802,26 @@ class STOAnalyzer(MCSimulationParser):
                             u1, v1 = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
                             u2, v2 = angles[:,:,layers[1],0], angles[:,:,layers[1],1]
                             
-                            fig, axs = plt.subplots(1,2, figsize=[12,6], sharey=True)
+                            fig, axs = plt.subplots(1,2, figsize=[13,7], sharey=True)
+                            fig.suptitle("FE Mode Amplitude @ $T={:d}$ K".format(int(t)), fontsize = self.label_size)
                             fig.canvas.set_window_title(pname) 
                             plt.tight_layout(pad = self.figure_pad)
-                            
-                            axs[0].quiver(u1,v1, pivot="mid")
-                            axs[0].set_xlabel("x (unit cells)", fontsize=12)
-                            axs[0].set_ylabel("y (unit cells)", fontsize=12)
+              
+                            m = np.mean(np.hypot(u1, v1))
+                            q0 = axs[0].quiver(X, Y, u1, v1, pivot="mid", width=0.008, headwidth=5, minlength=3, minshaft=3)
+                            axs[0].quiverkey(q0, 0.9, 1.03, m, '{:3.2f} bohr'.format(m), labelpos='E')
+                            axs[0].set_title("$z={:d}$".format(layers[0]), fontsize = self.label_size)
+                            axs[0].set_xlabel("$x$ (unit cells)", fontsize = self.label_size)
+                            axs[0].set_ylabel("$y$ (unit cells)", fontsize = self.label_size)
                             axs[0].invert_yaxis()
 
-                            axs[1].quiver(u2,v2, pivot="mid")
-                            axs[1].set_xlabel("x (unit cells)", fontsize=12)
+                            m = np.mean(np.hypot(u2, v2))
+                            q1 = axs[1].quiver(X, Y, u2, v2, pivot="mid", width=0.008, headwidth=5, minlength=3, minshaft=3)
+                            axs[1].quiverkey(q1, 0.9, 1.03, m, '{:3.2f} bohr'.format(m), labelpos='E')
+                            axs[1].set_title("$z={:d}$".format(layers[1]), fontsize = self.label_size)
+                            axs[1].set_xlabel("$x$ (unit cells)", fontsize = self.label_size)
                             axs[1].invert_yaxis()
-                            
+
                             plt.savefig(os.path.join(fplot, pname))
                             plt.close()
 
@@ -686,6 +848,8 @@ class STOAnalyzer(MCSimulationParser):
                         geom = self.access_geometry(t, p=p, s=s, f=f)
                         pols = STO_POL(geom)
 
+                        X, Y = np.meshgrid(range(geom.supercell[0]), range(geom.supercell[1]))
+
                         if len(layers) == 1:
 
                             plt.figure(pname)
@@ -702,19 +866,26 @@ class STOAnalyzer(MCSimulationParser):
                             u1, v1 = pols[:,:,layers[0],0], pols[:,:,layers[0],1]
                             u2, v2 = pols[:,:,layers[1],0], pols[:,:,layers[1],1]
                             
-                            fig, axs = plt.subplots(1,2, figsize=[12,6], sharey=True)
+                            fig, axs = plt.subplots(1,2, figsize=[13,7], sharey=True)
+                            fig.suptitle("Polarization per Unit Cell @ $T={:d}$ K".format(int(t)), fontsize = self.label_size)
                             fig.canvas.set_window_title(pname) 
                             plt.tight_layout(pad = self.figure_pad)
-                            
-                            axs[0].quiver(u1,v1, pivot="mid")
+              
+                            m = np.mean(np.hypot(u1, v1))
+                            q0 = axs[0].quiver(X, Y, u1, v1, pivot="mid", width=0.008, headwidth=5, minlength=3, minshaft=3)
+                            axs[0].quiverkey(q0, 0.9, 1.03, m, '{:3.2f} C/m^2'.format(m), labelpos='E')
+                            axs[0].set_title("$z={:d}$".format(layers[0]), fontsize = self.label_size)
                             axs[0].set_xlabel("x (unit cells)", fontsize=12)
                             axs[0].set_ylabel("y (unit cells)", fontsize=12)
                             axs[0].invert_yaxis()
 
-                            axs[1].quiver(u2,v2, pivot="mid")
+                            m = np.mean(np.hypot(u2, v2))
+                            q1 = axs[1].quiver(X, Y, u2, v2, pivot="mid", width=0.008, headwidth=5, minlength=3, minshaft=3)
+                            axs[1].quiverkey(q1, 0.9, 1.03, m, '{:3.2f} C/m^2'.format(m), labelpos='E')
+                            axs[1].set_title("$z={:d}$".format(layers[1]), fontsize = self.label_size)
                             axs[1].set_xlabel("x (unit cells)", fontsize=12)
                             axs[1].invert_yaxis()
-                            
+
                             plt.savefig(os.path.join(fplot, pname))
                             plt.close()
 
