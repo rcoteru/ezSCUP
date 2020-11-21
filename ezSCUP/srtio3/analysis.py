@@ -132,7 +132,7 @@ class STOAnalyzer(MCSimulationParser):
 
                         geom = self.access_geometry(t, s=s, p=p, f=f)
 
-                        angles = STO_ROT(geom, angles=True)
+                        angles = STO_ROT(geom, self.model, angles=True)
 
                         if abs:
                             xrot, xrot_err = np.mean(np.abs(angles[:,:,:,0])), np.std(np.abs(angles[:,:,:,0]))
@@ -206,7 +206,7 @@ class STOAnalyzer(MCSimulationParser):
 
                         geom = self.access_geometry(t, s=s, p=p, f=f)
 
-                        angles = STO_AFD(geom, mode=mode, angles=True)
+                        angles = STO_AFD(geom, self.model, mode=mode, angles=True)
 
                         if abs:
                             xrot, xrot_err = np.mean(np.abs(angles[:,:,:,0])), np.std(np.abs(angles[:,:,:,0]))
@@ -299,7 +299,7 @@ class STOAnalyzer(MCSimulationParser):
                     for l, t in enumerate(self.temp):
 
                         geom = self.access_geometry(t, s=s, p=p, f=f)
-                        disps = STO_FE(geom)
+                        disps = STO_FE(geom, self.model)
 
                         if abs:
                             xdist, xdist_err = np.mean(np.abs(disps[:,:,:,0])), np.std(np.abs(disps[:,:,:,0]))
@@ -367,7 +367,7 @@ class STOAnalyzer(MCSimulationParser):
                     for l, t in enumerate(self.temp):
 
                         geom = self.access_geometry(t, s=s, p=p, f=f)
-                        disps = STO_AFE(geom)
+                        disps = STO_AFE(geom, self.model)
 
                         if abs:
                             xdist, xdist_err = np.mean(np.abs(disps[:,:,:,0])), np.std(np.abs(disps[:,:,:,0]))
@@ -435,7 +435,7 @@ class STOAnalyzer(MCSimulationParser):
                     for l, t in enumerate(self.temp):
 
                         geom = self.access_geometry(t, s=s, p=p, f=f)
-                        disps = STO_OD(geom)
+                        disps = STO_OD(geom, self.model)
 
                         if abs:
                             xdist, xdist_err = np.mean(np.abs(disps[:,:,:,0])), np.std(np.abs(disps[:,:,:,0]))
@@ -564,7 +564,7 @@ class STOAnalyzer(MCSimulationParser):
                     for l, t in enumerate(self.temp):
 
                         geom = self.access_geometry(t, s=s, p=p, f=f)
-                        disps = STO_POL(geom)
+                        disps = STO_POL(geom, self.model)
 
                         if abs:
                             xdist, xdist_err = np.mean(np.abs(disps[:,:,:,0])), np.std(np.abs(disps[:,:,:,0]))
@@ -643,7 +643,7 @@ class STOAnalyzer(MCSimulationParser):
                         pname = "ROTdom_T" + str(int(t)) + ".png"
 
                         geom = self.access_geometry(t, p=p, s=s, f=f)
-                        angles = STO_ROT(geom, angles=True)
+                        angles = STO_ROT(geom, self.model, angles=True)
 
                         X, Y = np.meshgrid(range(geom.supercell[0]), range(geom.supercell[1]))
 
@@ -712,9 +712,9 @@ class STOAnalyzer(MCSimulationParser):
                         geom = self.access_geometry(t, p=p, s=s, f=f)
 
                         if symmetry:
-                            angles = STO_AFD(geom, mode=mode, angles=True, symmetry=True)
+                            angles = STO_AFD(geom, self.model, mode=mode, angles=True, symmetry=True)
                         else:
-                            angles = STO_AFD(geom, mode=mode, angles=True, symmetry=False)
+                            angles = STO_AFD(geom, self.model, mode=mode, angles=True, symmetry=False)
 
                         X, Y = np.meshgrid(range(geom.supercell[0]), range(geom.supercell[1]))
 
@@ -782,7 +782,7 @@ class STOAnalyzer(MCSimulationParser):
                         pname = "FEdom_T" + str(int(t)) + ".png"
 
                         geom = self.access_geometry(t, p=p, s=s, f=f)
-                        angles = STO_FE(geom)
+                        angles = STO_FE(geom, self.model)
 
                         X, Y = np.meshgrid(range(geom.supercell[0]), range(geom.supercell[1]))
 
@@ -846,7 +846,7 @@ class STOAnalyzer(MCSimulationParser):
                         pname = "POLdom_T" + str(int(t)) + ".png"
 
                         geom = self.access_geometry(t, p=p, s=s, f=f)
-                        pols = STO_POL(geom)
+                        pols = STO_POL(geom, self.model)
 
                         X, Y = np.meshgrid(range(geom.supercell[0]), range(geom.supercell[1]))
 

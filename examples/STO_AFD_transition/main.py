@@ -15,8 +15,8 @@ import time
 import numpy as np
 
 # ezSCUP imports
-from ezSCUP.srtio3.constants import SPECIES, NATS
 from ezSCUP.srtio3.analysis import STOAnalyzer
+from ezSCUP.srtio3.models import STO_PRB2017
 from ezSCUP.montecarlo import MCSimulation
 import ezSCUP.settings as cfg
 
@@ -49,7 +49,7 @@ cfg.MC_MAX_JUMP = 0.15                      # MC max jump size (in Angstrom)
 # create simulation class
 sim = MCSimulation()
 sim.setup(
-    "srtio3", "srtio3_full_lat.xml", SUPERCELL, SPECIES, NATS,
+    "srtio3", "srtio3_full_lat.xml", SUPERCELL, STO_PRB2017,
     temp = TEMPERATURES, output_folder = "output"
 )
     

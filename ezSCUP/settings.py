@@ -8,12 +8,14 @@ import os
 ##  EZSCUP SETTINGS
 #####################################################################
 
-# Location of the Scale-Up executable in the system
+# Location of the SCALE-UP executable in the system
 # This setting is required to run any simulations.
 # By default picks up the environment variable SCUP_EXEC.
 # If it hasnt been setup, defaults to None.
-#SCUP_EXEC = "/home/citimac/jjunquer/Code/Git/scaleup/Obj/Intel-Parallel-OpenMP/src/scaleup.x"
 SCUP_EXEC = os.getenv("SCUP_EXEC", default = None) 
+
+# Folder where the SCALE-UP models are located
+SCUP_MODELS = os.getenv("SCUP_MODELS", default = None) 
 
 # Whether or not to overwrite old output when starting a 
 # new simulation run. 
@@ -71,3 +73,21 @@ FIXED_STRAIN_COMPONENTS = [False, False, False, False, False, False]
 
 # Whether or not to print FDF settings before each simulation run. 
 PRINT_CONF_SETTINGS = False
+
+
+#####################################################################
+##  GEOMETRY OPTIMIZATION (CGD) FDF DEFAULT SETTINGS
+#####################################################################
+
+# TODO DOCUMENTATION
+
+CGD_MAX_ITER = 1000
+
+CGD_FORCE_THRESHOLD = 0.01
+
+CGD_FORCE_FACTOR = 1.0
+
+CGD_STRESS_FACTOR = 10.0
+
+CGD_MAX_STEP = 0.01 
+

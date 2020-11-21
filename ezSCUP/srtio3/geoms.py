@@ -1,10 +1,5 @@
 """
-
-Collection of functions designed to project structural modes, 
-such as the antiferrodistortive (AFD) and ferroelectric (FE) modes,
-on AB03 perovskites. There is also a method to obtain the per-unit-cell
-polarization.
-
+    
 """
 
 # third party imports
@@ -16,7 +11,6 @@ from pathlib import Path
 import os, sys
 
 # package imports
-from ezSCUP.srtio3.constants import SPECIES, NATS, LABELS, TIO_DIST
 from ezSCUP.geometry import Geometry
 
 import ezSCUP.settings as cfg
@@ -30,20 +24,40 @@ import ezSCUP.exceptions
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
+class STOGeometry(Geometry):
+
+    def __init__(self, supercell, model):
+
+        super().__init__(supercell, model["species"], model["nats"])
+
+        self.lat_vectors = np.zeros((3,3))
+        self.lat_constants = np.zeros(3)
+        for i in range(3):
+            self.lat_vectors[i,:] = np.array(model["lat_vectors"][i])
+            self.lat_constants[i] = np.linalg.norm(self.lat_vectors[i,:])
+
+        sc = self.supercell
+        self.positions = np.zeros([sc[0], sc[1], sc[2], self.nats, 3])
+        for x in range(self.supercell[0]):
+            for y in range(self.supercell[1]):
+                for z in range(self.supercell[2]):
+                    cell_vector = x*self.lat_vectors[0,:] + y*self.lat_vectors[1,:] + z*self.lat_vectors[2,:]
+                    for j in range(self.nats):
+                        self.positions[x,y,z,j,:] = cell_vector + model["ref_struct"][j]
+
 # ================================================================= #
-# ~~~~~~~~~~~~~~~~~~ Geometry Generation ~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~ GEOMETRY GENERATION ~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ================================================================= #
 
-def AFD_monodomain(supercell, angle, mode="a", axis="z", clockwise=False):
+def AFD_monodomain(supercell, model, angle, mode="a", axis="z", clockwise=False):
 
     """
 
     """
 
-    disp = TIO_DIST*np.arctan(angle/180.*np.pi)
-
-    geom = Geometry(supercell, SPECIES, NATS)
-    _, _, Ox, Oy, Oz = LABELS
+    _, _, Ox, Oy, Oz = model["labels"]
+    geom = STOGeometry(supercell, model)
+    disp = model["BOdist"]*np.arctan(angle/180.*np.pi)
 
     if clockwise:
         cw = 1
@@ -108,7 +122,7 @@ def AFD_monodomain(supercell, angle, mode="a", axis="z", clockwise=False):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
-def AFD_FE_xy_vortex(supercell, angle, region_size, Ti_disp=0.3):
+def AFD_FE_xy_vortex(supercell, model, angle, region_size, Ti_disp=0.3):
 
     """
     Generates a rotational AFDa vortex structure in the xy plane.
@@ -133,11 +147,9 @@ def AFD_FE_xy_vortex(supercell, angle, region_size, Ti_disp=0.3):
     - the requested Geometry object.
     """
 
-    disp = TIO_DIST*np.arctan(angle/180.*np.pi)
-
-    geom = Geometry(supercell, SPECIES, 5)
-
-    _, B, Ox, Oy, Oz = LABELS
+    _, B, Ox, Oy, Oz = model["labels"]
+    geom = STOGeometry(supercell, model)
+    disp = model["BOdist"]*np.arctan(angle/180.*np.pi)
 
     for x in range(supercell[0]):
         for y in range(supercell[1]):
@@ -164,8 +176,6 @@ def AFD_FE_xy_vortex(supercell, angle, region_size, Ti_disp=0.3):
                     geom.displacements[x,y,z,Oz,1] += factor*disp
                     geom.displacements[x,y,z,Oy,2] -= factor*disp
                     # FE x negativo y positivo
-                    #geom.displacements[x,y,z,B,0] -= Ti_disp
-                    #geom.displacements[x,y,z,B,1] += Ti_disp
                     geom.displacements[x,y,z,B,0] += Ti_disp
                     geom.displacements[x,y,z,B,1] -= Ti_disp
 
@@ -177,8 +187,6 @@ def AFD_FE_xy_vortex(supercell, angle, region_size, Ti_disp=0.3):
                     geom.displacements[x,y,z,Oz,1] += factor*disp
                     geom.displacements[x,y,z,Oy,2] -= factor*disp
                     # FE x negativo y negativo
-                    #geom.displacements[x,y,z,B,0] -= Ti_disp
-                    #geom.displacements[x,y,z,B,1] -= Ti_disp
                     geom.displacements[x,y,z,B,0] += Ti_disp
                     geom.displacements[x,y,z,B,1] += Ti_disp
 
@@ -190,8 +198,6 @@ def AFD_FE_xy_vortex(supercell, angle, region_size, Ti_disp=0.3):
                     geom.displacements[x,y,z,Oz,1] -= factor*disp
                     geom.displacements[x,y,z,Oy,2] += factor*disp
                     # FE x positivo y negativo
-                    #geom.displacements[x,y,z,B,0] += Ti_disp
-                    #geom.displacements[x,y,z,B,1] -= Ti_disp
                     geom.displacements[x,y,z,B,0] -= Ti_disp
                     geom.displacements[x,y,z,B,1] += Ti_disp
 
@@ -203,9 +209,12 @@ def AFD_FE_xy_vortex(supercell, angle, region_size, Ti_disp=0.3):
                     geom.displacements[x,y,z,Oz,1] -= factor*disp
                     geom.displacements[x,y,z,Oy,2] += factor*disp 
                     # FE x positivo y positivo
-                    #geom.displacements[x,y,z,B,0] += Ti_disp
-                    #geom.displacements[x,y,z,B,1] += Ti_disp
                     geom.displacements[x,y,z,B,0] -= Ti_disp
                     geom.displacements[x,y,z,B,1] -= Ti_disp
 
     return geom
+
+# ================================================================= #
+# ~~~~~~~~~~~~~~~~~~~~~~~ VECTOR FIELDS ~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ================================================================= #
+

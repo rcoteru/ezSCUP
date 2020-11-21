@@ -9,7 +9,7 @@ import numpy as np          # matrix support
 import pandas as pd         # .out file loading
 
 # standard library imports
-from shutil import move,rmtree      # remove output folder
+from shutil import move,rmtree,copy # remove output folder
 from pathlib import Path            # general folder management
 import os, sys, csv                 # remove files, get pwd
 import pickle                       # store parameter vectors
@@ -99,20 +99,14 @@ class MCSimulationParser:
             # load simulation run info
             self.name      = setup["name"] 
             self.supercell = setup["supercell"]
-            self.species   = setup["species"]
-            self.nats      = setup["nats"]
+            self.model     = setup["model"]
 
             self.mc_steps            = setup["mc_steps"]
             self.mc_step_interval    = setup["mc_step_interval"]
             self.mc_equilibration_steps = setup["mc_equilibration_steps"]
             self.mc_max_jump         = setup["mc_max_jump"]
             self.lat_output_interval = setup["lat_output_interval"]
-
-            try:
-                self.mc_annealing_rate = setup["mc_annealing_rate"]
-            except:
-                self.mc_annealing_rate = 1
-
+            self.mc_annealing_rate = setup["mc_annealing_rate"]
             self.fixed_strain_components = setup["fixed_strain_components"]
 
             self.temp   = setup["temp"] 
@@ -255,7 +249,7 @@ class MCSimulationParser:
         reference_file = os.path.join(folder, sim_name + "_FINAL.REF")
         restart_file = os.path.join(folder, sim_name + "_EQUILIBRIUM.restart")
 
-        geo = Geometry(self.supercell, self.species, self.nats)
+        geo = Geometry(self.supercell, self.model["species"], self.model["nats"])
         geo.load_reference(reference_file)
         geo.load_restart(restart_file)
         
@@ -395,11 +389,12 @@ class MCSimulation:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def setup(
-        self, system_name, parameter_file,
-        supercell, species, nats, 
+        self, system_name, model, supercell,
         temp, stress=None, strain=None, field=None, 
         output_folder="output" 
         ):
+
+        # TODO PARAMETER FILE, SPECIES, NATS
 
         """
         
@@ -439,12 +434,9 @@ class MCSimulation:
             raise ezSCUP.exceptions.NoSCUPExecutableDetected
 
         self.name = system_name
-        self.parameter_file = parameter_file
-        self.sim = MC_SCUPHandler(self.name, self.parameter_file, cfg.SCUP_EXEC)
-
+        self.model = model
         self.supercell = supercell
-        self.species = species
-        self.nats = nats
+        self.sim = MC_SCUPHandler(self.name, "param_file.xml", cfg.SCUP_EXEC)
 
         self.output_folder = output_folder # current output folder
 
@@ -513,7 +505,7 @@ class MCSimulation:
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
         # setup restart file generator
-        self.generator = Geometry(self.supercell, self.species, self.nats)
+        self.generator = Geometry(self.supercell, model["species"], model["nats"])
 
         # print common simulation settings
         if cfg.PRINT_CONF_SETTINGS:
@@ -526,10 +518,8 @@ class MCSimulation:
 
         setup = {
             "name": self.name,
-            "parameter_file": self.parameter_file,
+            "model": self.model,
             "supercell": self.supercell,
-            "species": self.species,
-            "nats": self.nats,
             "temp": self.temp,
             "strain": self.strain,
             "stress": self.stress,
@@ -601,10 +591,8 @@ class MCSimulation:
 
         setup = {
             "name": self.name,
+            "model": self.model,
             "supercell": self.supercell,
-            "species": self.species,
-            "nats": self.nats,
-
             "temp": self.temp,
             "strain": self.strain,
             "stress": self.stress,
@@ -613,10 +601,11 @@ class MCSimulation:
             "mc_steps": self.mc_steps,
             "mc_step_interval": self.mc_step_interval,
             "mc_equilibration_steps": self.mc_equilibration_steps,
+            "mc_annealing_rate": self.mc_annealing_rate,
             "mc_max_jump": self.mc_max_jump,
             "lat_output_interval": self.lat_output_interval,
 
-            "fixed_strain_components": cfg.FIXED_STRAIN_COMPONENTS,
+            "fixed_strain_components": self.fixed_strain_components,
             }
 
         simulation_setup_file = os.path.join(self.main_output_folder, cfg.SIMULATION_SETUP_FILE)
@@ -664,13 +653,16 @@ class MCSimulation:
             if not np.all(self.generator.supercell == start_geo.supercell): 
                 raise ezSCUP.exceptions.GeometryNotMatching()
 
-            if self.generator.nats != None and (start_geo.nats != self.nats):
+            if self.generator.nats != None and (start_geo.nats != self.model["nats"]):
                 raise ezSCUP.exceptions.GeometryNotMatching()
 
-            if self.generator.species != None and (set(self.species) != set(self.species)):
+            if self.generator.species != None and (set(self.model["species"]) != set(self.model["species"])):
                 raise ezSCUP.exceptions.GeometryNotMatching()
 
             self.generator.displacements = start_geo.displacements
+
+        # get a copy of the model file
+        copy(self.model["file"], "param_file.xml")
 
         # parser to get partials
         parser = MCSimulationParser(output_folder=self.output_folder)
@@ -767,13 +759,16 @@ class MCSimulation:
                         print("Calculating equilibrium geometry...")
                         partials = parser.find_partials(t, p=p, s=s, f=f,
                         min_step=self.mc_equilibration_steps)
-                        aux_geo = Geometry(self.supercell, self.species, self.nats)
+                        aux_geo = Geometry(self.supercell, self.model["species"], self.model["nats"])
                         aux_geo.load_equilibrium_displacements(partials)
                         aux_geo.write_restart(os.path.join(configuration_folder, sim_name + "_EQUILIBRIUM.restart"))
 
                         print("All files stored in output/" + subfolder_name + " succesfully.\n")
 
         self.generator.reset_geom()
+
+        # remove the copy of the model
+        os.remove("param_file.xml")
 
         main_finished_time = time.time()
         main_time = main_finished_time - main_start_time
@@ -817,11 +812,14 @@ class MCSimulation:
             if not np.all(self.generator.supercell == start_geo.supercell): 
                 raise ezSCUP.exceptions.GeometryNotMatching()
 
-            if self.generator.nats != None and (start_geo.nats != self.nats):
+            if self.generator.nats != None and (start_geo.nats != self.model["nats"]):
                 raise ezSCUP.exceptions.GeometryNotMatching()
 
-            if self.generator.species != None and (set(self.species) != set(self.species)):
+            if self.generator.species != None and (set(self.model["species"]) != set(self.model["species"])):
                 raise ezSCUP.exceptions.GeometryNotMatching()
+
+        # get a copy of the model file
+        copy(self.model["file"], "param_file.xml")
 
         # parser to get equilibrium geometry
         parser = MCSimulationParser(output_folder=self.output_folder)
@@ -927,7 +925,7 @@ class MCSimulation:
                         print("Calculating equilibrium geometry...")
                         partials = parser.find_partials(t, p=p, s=s, f=f,
                         min_step=self.mc_equilibration_steps)
-                        aux_geo = Geometry(self.supercell, self.species, self.nats)
+                        aux_geo = Geometry(self.supercell, self.model["species"], self.model["nats"])
                         aux_geo.load_equilibrium_displacements(partials)
                         aux_geo.write_restart(os.path.join(configuration_folder, sim_name + "_EQUILIBRIUM.restart"))
 
@@ -938,6 +936,8 @@ class MCSimulation:
 
                         print("All files stored in output/" + subfolder_name + " succesfully.\n")
 
+        # remove the copy of the model
+        os.remove("param_file.xml")
 
         self.generator.reset_geom()
 

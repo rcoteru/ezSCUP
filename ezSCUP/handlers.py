@@ -36,6 +36,9 @@ import ezSCUP.exceptions
 # + class SP_SCUPHandler(SCUPHandler)
 #   - __init__()
 #
+# + class CGD_SCUPHandler(SCUPHandler)
+#   - __init__()
+#
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
@@ -370,6 +373,46 @@ class SP_SCUPHandler(SCUPHandler):
 
         # SP settings:
         self.settings["run_mode"] = FDFSetting("single_point")
+
+        # strain settings 
+        if len(cfg.FIXED_STRAIN_COMPONENTS) != 6:
+            raise ezSCUP.exceptions.InvalidFDFSetting
+        auxsetting = []
+        for s in list(cfg.FIXED_STRAIN_COMPONENTS):
+            if not isinstance(s, bool):
+                raise ezSCUP.exceptions.InvalidFDFSetting
+            if s:
+                auxsetting.append("T")
+            else:
+                auxsetting.append("F")
+        self.settings["fix_strain_component"] = [auxsetting]
+
+        pass
+
+    pass
+
+# ================================================================= #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ================================================================= #
+
+class CGD_SCUPHandler(SCUPHandler):
+
+
+    def __init__(self, system_name, parameter_file, scup_exec):
+
+        super().__init__(system_name, parameter_file, scup_exec)
+        
+        # general settings
+        self.settings["no_electron"] = FDFSetting(".true.")
+        self.settings["supercell"] = [[1, 1, 1]]
+
+        # CGD settings:
+        self.settings["run_mode"] = FDFSetting("optimization")
+        self.settings["maximumgeomiter"] = FDFSetting(cfg.CGD_MAX_ITER)
+        self.settings["forcethreshold"] = FDFSetting(cfg.CGD_FORCE_THRESHOLD, unit = "eV/Ang")
+        self.settings["opt_forcefactor"] = FDFSetting(cfg.CGD_FORCE_FACTOR)
+        self.settings["opt_stressfactor"] = FDFSetting(cfg.CGD_STRESS_FACTOR)
+        self.settings["opt_maximum_step"] = FDFSetting(cfg.CGD_MAX_STEP, unit = "bohr")
 
         # strain settings 
         if len(cfg.FIXED_STRAIN_COMPONENTS) != 6:

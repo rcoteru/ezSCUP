@@ -16,8 +16,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # ezSCUP imports
-from ezSCUP.srtio3.constants import SPECIES, NATS
 from ezSCUP.srtio3.analysis import STOAnalyzer
+from ezSCUP.srtio3.models import STO_PRB2017
 from ezSCUP.montecarlo import MCSimulation
 import ezSCUP.settings as cfg
 
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     # create simulation class
     sim = MCSimulation()
     sim.setup(
-        "srtio3", "srtio3_full_lat.xml", SUPERCELL, SPECIES, NATS,
+        "srtio3", "srtio3_full_lat.xml", SUPERCELL, 
         temp = TEMPERATURES, strain=STRAINS,
         output_folder = "output"
     )
