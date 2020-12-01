@@ -20,6 +20,8 @@ import re                           # regular expressions
 from ezSCUP.handlers import MC_SCUPHandler, FDFSetting
 from ezSCUP.geometry import Geometry
 
+from ezSCUP.srtio3.models import STO_JPCM2013
+
 import ezSCUP.settings as cfg
 import ezSCUP.exceptions
 
@@ -99,14 +101,21 @@ class MCSimulationParser:
             # load simulation run info
             self.name      = setup["name"] 
             self.supercell = setup["supercell"]
-            self.model     = setup["model"]
+            try:
+                self.model = setup["model"]
+            except:
+                self.model = STO_JPCM2013
+
 
             self.mc_steps            = setup["mc_steps"]
             self.mc_step_interval    = setup["mc_step_interval"]
             self.mc_equilibration_steps = setup["mc_equilibration_steps"]
             self.mc_max_jump         = setup["mc_max_jump"]
             self.lat_output_interval = setup["lat_output_interval"]
-            self.mc_annealing_rate = setup["mc_annealing_rate"]
+            try:
+                self.mc_annealing_rate = setup["mc_annealing_rate"]
+            except:
+                self.mc_annealing_rate = 1
             self.fixed_strain_components = setup["fixed_strain_components"]
 
             self.temp   = setup["temp"] 

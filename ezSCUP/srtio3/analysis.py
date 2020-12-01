@@ -206,7 +206,7 @@ class STOAnalyzer(MCSimulationParser):
 
                         geom = self.access_geometry(t, s=s, p=p, f=f)
 
-                        angles = STO_AFD(geom, self.model, mode=mode, angles=True)
+                        angles = STO_AFD(geom, self.model, mode=mode, angles=True, algo="sign")
 
                         if abs:
                             xrot, xrot_err = np.mean(np.abs(angles[:,:,:,0])), np.std(np.abs(angles[:,:,:,0]))
@@ -712,9 +712,9 @@ class STOAnalyzer(MCSimulationParser):
                         geom = self.access_geometry(t, p=p, s=s, f=f)
 
                         if symmetry:
-                            angles = STO_AFD(geom, self.model, mode=mode, angles=True, symmetry=True)
+                            angles = STO_AFD(geom, self.model, mode=mode, angles=True, symmetry=True, algo="sign")
                         else:
-                            angles = STO_AFD(geom, self.model, mode=mode, angles=True, symmetry=False)
+                            angles = STO_AFD(geom, self.model, mode=mode, angles=True, symmetry=False, algo="sign")
 
                         X, Y = np.meshgrid(range(geom.supercell[0]), range(geom.supercell[1]))
 
