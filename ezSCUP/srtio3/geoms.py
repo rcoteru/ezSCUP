@@ -118,6 +118,79 @@ def AFD_monodomain(supercell, model, angle, mode="a", axis="z", clockwise=False)
     return geom
 
 
+def AFD_layers(supercell, model, angle, region_size, mode="a", axis="z", clockwise=False):
+
+    """
+
+    """
+
+    _, _, Ox, Oy, Oz = model["labels"]
+    geom = STOGeometry(supercell, model)
+    disp = model["BOdist"]*np.arctan(angle/180.*np.pi)
+
+    if clockwise:
+        cw = 1
+    else:
+        cw = 0
+
+    for x in range(supercell[0]):
+        for y in range(supercell[1]):
+            for z in range(supercell[2]):
+
+                if mode == "a":
+
+                    if axis == "x":
+                        layer = np.floor(x/region_size)%2
+                        factor = (-1)**x * (-1)**y * (-1)**z * (-1)**cw * (-1)**layer
+                        geom.displacements[x,y,z,Oy,2] -= factor*disp
+                        geom.displacements[x,y,z,Oz,1] += factor*disp
+
+                    elif axis == "y":
+                        layer = np.floor(y/region_size)%2
+                        factor = (-1)**x * (-1)**y * (-1)**z * (-1)**cw * (-1)**layer
+                        geom.displacements[x,y,z,Oz,0] -= factor*disp
+                        geom.displacements[x,y,z,Ox,2] += factor*disp
+
+                    elif axis == "z":
+                        layer = np.floor(z/region_size)%2
+                        factor = (-1)**x * (-1)**y * (-1)**z * (-1)**cw * (-1)**layer
+                        geom.displacements[x,y,z,Ox,1] -= factor*disp
+                        geom.displacements[x,y,z,Oy,0] += factor*disp
+
+                    else:
+                        raise NotImplementedError()
+
+
+                elif mode == "i":
+
+                    if axis == "x":
+                        factor = (-1)**y * (-1)**z * (-1)**cw
+                        geom.displacements[x,y,z,Oy,2] -= factor*disp
+                        geom.displacements[x,y,z,Oz,1] += factor*disp
+                    elif axis == "y":
+                        factor = (-1)**x * (-1)**z * (-1)**cw
+                        geom.displacements[x,y,z,Oz,0] -= factor*disp
+                        geom.displacements[x,y,z,Ox,2] += factor*disp
+                    elif axis == "z":
+                        factor = (-1)**x * (-1)**y * (-1)**cw
+                        geom.displacements[x,y,z,Ox,1] -= factor*disp
+                        geom.displacements[x,y,z,Oy,0] += factor*disp
+                    elif axis == "xy" or axis == "yx":
+                        factor = (-1)**y * (-1)**z * (-1)**cw
+                        geom.displacements[x,y,z,Oy,2] -= factor*disp
+                        geom.displacements[x,y,z,Oz,1] += factor*disp
+                        factor = (-1)**x * (-1)**z * (-1)**cw
+                        geom.displacements[x,y,z,Oz,0] -= factor*disp
+                        geom.displacements[x,y,z,Ox,2] += factor*disp
+                    else:
+                        raise NotImplementedError()
+    
+                else:
+                    raise NotImplementedError()
+
+    return geom
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -214,7 +287,4 @@ def AFD_FE_xy_vortex(supercell, model, angle, region_size, Ti_disp=0.3):
 
     return geom
 
-# ================================================================= #
-# ~~~~~~~~~~~~~~~~~~~~~~~ VECTOR FIELDS ~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-# ================================================================= #
 
