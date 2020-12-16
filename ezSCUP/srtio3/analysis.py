@@ -74,7 +74,8 @@ class STOAnalyzer(MCSimulationParser):
                             os.path.join(self.fplots, label, "AFE"),
                             os.path.join(self.fplots, label, "OD"),
                             os.path.join(self.fplots, label, "POL"),
-                            os.path.join(self.fplots, label, "STRA"),                            
+                            os.path.join(self.fplots, label, "STRA"),      
+                            os.path.join(self.fplots, label, "AFDx"),                            
                             ]
 
                     for d in dirs:
@@ -206,7 +207,7 @@ class STOAnalyzer(MCSimulationParser):
 
                         geom = self.access_geometry(t, s=s, p=p, f=f)
 
-                        angles = STO_AFD(geom, self.model, mode=mode, angles=True, algo="sign")
+                        angles = STO_AFD(geom, self.model, mode=mode, angles=True, algo="sum")
 
                         if abs:
                             xrot, xrot_err = np.mean(np.abs(angles[:,:,:,0])), np.std(np.abs(angles[:,:,:,0]))
@@ -712,9 +713,9 @@ class STOAnalyzer(MCSimulationParser):
                         geom = self.access_geometry(t, p=p, s=s, f=f)
 
                         if symmetry:
-                            angles = STO_AFD(geom, self.model, mode=mode, angles=True, symmetry=True, algo="sign")
+                            angles = STO_AFD(geom, self.model, mode=mode, angles=True, symmetry=True, algo="sum")
                         else:
-                            angles = STO_AFD(geom, self.model, mode=mode, angles=True, symmetry=False, algo="sign")
+                            angles = STO_AFD(geom, self.model, mode=mode, angles=True, symmetry=False, algo="sum")
 
                         X, Y = np.meshgrid(range(geom.supercell[0]), range(geom.supercell[1]))
 
@@ -764,6 +765,53 @@ class STOAnalyzer(MCSimulationParser):
                         else:
                             print("\nPLOTTING ERROR: Unsupported number of layers!")
                             pass
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def AFDx_horizontal(self, layer):
+
+        for i,s in enumerate(self.strain):
+            for j,p in enumerate(self.stress):
+                for k,f in enumerate(self.field):
+                    
+                    label = "s{:d}p{:d}f{:d}".format(i,j,k)
+                    fplot = os.path.join(self.fplots, label, "AFDx")
+                    
+                    for _, t in enumerate(self.temp):
+
+                        pname = "AFDx_dom_T" + str(int(t)) + ".png"
+                        geom = self.access_geometry(t, p=p, s=s, f=f)
+
+                        angles = STO_ROT(geom, self.model, angles=True)
+                        phase = STO_AFD(geom, self.model, algo="sign")
+                        X, Y = np.meshgrid(range(geom.supercell[0]), range(geom.supercell[1]))                       
+
+                        u1, v1 = phase[:,:,layer,0], phase[:,:,layer,1]      
+                        u2, v2 = angles[:,:,layer,0], angles[:,:,layer,1]
+                        
+                        fig, axs = plt.subplots(1,2, figsize=[13,7], sharey=True)
+                        fig.suptitle("AFD Mode Projection @ $T={:d}$ K, $z={:d}$".format(int(t), layer), fontsize = self.label_size)
+                        fig.canvas.set_window_title(pname) 
+                        plt.tight_layout(pad = self.figure_pad)
+            
+                        m = np.mean(np.hypot(u1, v1))
+                        q0 = axs[0].quiver(X, Y, u1, v1, pivot="mid", width=0.008, headwidth=5, minlength=3, minshaft=3)
+                        axs[0].quiverkey(q0, 0.9, 1.03, m, '{:2.1f}'.format(m), labelpos='E')
+                        axs[0].set_title("AFD Projection", fontsize = self.label_size)
+                        axs[0].set_xlabel("$x$ (unit cells)", fontsize = self.label_size)
+                        axs[0].set_ylabel("$y$ (unit cells)", fontsize = self.label_size)
+                        axs[0].invert_yaxis()
+
+                        m = np.mean(np.hypot(u2, v2))
+                        q1 = axs[1].quiver(X, Y, u2, v2, pivot="mid", width=0.008, headwidth=5, minlength=3, minshaft=3)
+                        axs[1].quiverkey(q1, 0.9, 1.03, m, '{:2.1f} º'.format(m), labelpos='E')
+                        axs[1].set_title("Rotations", fontsize = self.label_size)
+                        axs[1].set_xlabel("$x$ (unit cells)", fontsize = self.label_size)
+                        axs[1].invert_yaxis()
+
+                        plt.savefig(os.path.join(fplot, pname))
+                        plt.close()
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #

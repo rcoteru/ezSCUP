@@ -299,50 +299,44 @@ def STO_AFD(geom, model, mode="a", angles=True, symmetry=True, algo="sum"):
     if algo == "sign":
 
         rots = STO_ROT(geom, model, angles=angles)
-        mask = np.zeros_like(rots)
-        signed = np.sign(rots)
+        dirs = np.copy(rots)
+        proj = np.zeros_like(rots)
         
-        # create the mask
+        # normalize the rotations
+        for x in range(geom.supercell[0]):
+            for y in range(geom.supercell[1]):
+                for z in range(geom.supercell[2]):
+                    dirs[x,y,z,:] = dirs[x,y,z,:]/np.linalg.norm(dirs[x,y,z,:])
+
+        # calculate the projection
         for x in range(geom.supercell[0]):
             for y in range(geom.supercell[1]):
                 for z in range(geom.supercell[2]):
 
-                    mask[x,y,z,0] += 0.5*signed[x,y,z,0]*signed[(x+1)%geom.supercell[0],y,z,0] + \
-                                     0.5*signed[x,y,z,0]*signed[(x-1)%geom.supercell[0],y,z,0]
+                    cell = np.array([x,y,z])
 
-                    mask[x,y,z,1] += 0.5*signed[x,y,z,1]*signed[x,(y+1)%geom.supercell[1],z,1] + \
-                                     0.5*signed[x,y,z,1]*signed[x,(y-1)%geom.supercell[1],z,1]
+                    ux, uy, uz = np.mod(cell + [1,0,0], geom.supercell)
+                    dx, dy, dz = np.mod(cell - [1,0,0], geom.supercell)
+                    proj[x,y,z,0] = np.mean([
+                                    np.dot(dirs[x,y,z,:], dirs[ux,uy,uz,:]),
+                                    np.dot(dirs[x,y,z,:], dirs[dx,dy,dz,:])
+                                    ])
 
-                    mask[x,y,z,2] += 0.5*signed[x,y,z,2]*signed[x,y,(z+1)%geom.supercell[2],0] + \
-                                     0.5*signed[x,y,z,2]*signed[x,y,(x-1)%geom.supercell[2],0]
+                    ux, uy, uz = np.mod(cell + [0,1,0], geom.supercell)
+                    dx, dy, dz = np.mod(cell - [0,1,0], geom.supercell)
+                    proj[x,y,z,1] = np.mean([
+                                    np.dot(dirs[x,y,z,:], dirs[ux,uy,uz,:]),
+                                    np.dot(dirs[x,y,z,:], dirs[dx,dy,dz,:])
+                                    ])
 
-        if mode == "a":
-            
-            dist = np.where(mask == -1., rots, 0)
+                    ux, uy, uz = np.mod(cell + [0,0,1], geom.supercell)
+                    dx, dy, dz = np.mod(cell - [0,0,1], geom.supercell)
+                    proj[x,y,z,2] = np.mean([
+                                    np.dot(dirs[x,y,z,:], dirs[ux,uy,uz,:]),
+                                    np.dot(dirs[x,y,z,:], dirs[dx,dy,dz,:])
+                                    ])
 
-            # symmetry corrections -> R-point instability
-            if symmetry:
-                for x in range(geom.supercell[0]):
-                    for y in range(geom.supercell[1]):
-                        for z in range(geom.supercell[2]):
-                            dist[x,y,z,:] = (-1)**x * (-1)**y * (-1)**z * dist[x,y,z,:]
-            
-            return dist
-
-        if mode == "i":
-            
-            dist = np.where(mask == 1., rots, 0)
-
-            # symmetry corrections -> M-point instability
-            if symmetry:
-                for x in range(geom.supercell[0]):
-                    for y in range(geom.supercell[1]):
-                        for z in range(geom.supercell[2]):
-                            dist[x,y,z,0] = (-1)**y * (-1)**z * dist[x,y,z,0]
-                            dist[x,y,z,1] = (-1)**x * (-1)**z * dist[x,y,z,1]
-                            dist[x,y,z,2] = (-1)**x * (-1)**y * dist[x,y,z,2]
-
-            return dist
+        return proj
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
