@@ -130,215 +130,170 @@ def STO_AFD(geom, model, mode="a", angles=True, symmetry=True, algo="sum"):
     if not isinstance(geom, Geometry):
         raise ezSCUP.exceptions.InvalidGeometryObject
 
-    if algo == "sum":
+    _, _, Ox, Oy, Oz = model["labels"]
 
-        _, _, Ox, Oy, Oz = model["labels"]
-
-        AFDa_X=[
-                # atom, hopping, weight, target vector
-                # "lower" cell
-                [Oz, [-1, 0, 0], -1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [-1, 0, 0],  1/8., [ 0.0, 0.0, 0.7071067812]],
-                [Oz, [-1, 0, 1],  1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [-1, 1, 0], -1/8., [ 0.0, 0.0, 0.7071067812]],
-                # "middle" cell
-                [Oz, [ 0, 0, 0],  1/4., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 0, 0], -1/4., [ 0.0, 0.0, 0.7071067812]],
-                [Oz, [ 0, 0, 1], -1/4., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 1, 0],  1/4., [ 0.0, 0.0, 0.7071067812]],
-                # "upper" cell
-                [Oz, [ 1, 0, 0], -1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 1, 0, 0],  1/8., [ 0.0, 0.0, 0.7071067812]],
-                [Oz, [ 1, 0, 1],  1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 1, 1, 0], -1/8., [ 0.0, 0.0, 0.7071067812]],
-            ]
+    AFDa_X=[
+            # atom, hopping, weight, target vector
+            # "lower" cell
+            [Oz, [-1, 0, 0], -1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [-1, 0, 0],  1/8., [ 0.0, 0.0, 0.7071067812]],
+            [Oz, [-1, 0, 1],  1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [-1, 1, 0], -1/8., [ 0.0, 0.0, 0.7071067812]],
+            # "middle" cell
+            [Oz, [ 0, 0, 0],  1/4., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 0, 0], -1/4., [ 0.0, 0.0, 0.7071067812]],
+            [Oz, [ 0, 0, 1], -1/4., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 1, 0],  1/4., [ 0.0, 0.0, 0.7071067812]],
+            # "upper" cell
+            [Oz, [ 1, 0, 0], -1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 1, 0, 0],  1/8., [ 0.0, 0.0, 0.7071067812]],
+            [Oz, [ 1, 0, 1],  1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 1, 1, 0], -1/8., [ 0.0, 0.0, 0.7071067812]],
+        ]
 
 
-        AFDa_Y=[
-                # atom, hopping, weight, target vector
-                # "lower" cell
-                [Ox, [0,-1, 0],-1/8.,[ 0.0, 0.0, 0.7071067812]],
-                [Oz, [0,-1, 0], 1/8.,[ 0.7071067812, 0.0, 0.0]],
-                [Ox, [1,-1, 0], 1/8.,[ 0.0, 0.0, 0.7071067812]],
-                [Oz, [0,-1, 1],-1/8.,[ 0.7071067812, 0.0, 0.0]],
-                # "middle" cell
-                [Ox, [0, 0, 0], 1/4.,[ 0.0, 0.0, 0.7071067812]],
-                [Oz, [0, 0, 0],-1/4.,[ 0.7071067812, 0.0, 0.0]],
-                [Ox, [1, 0, 0],-1/4.,[ 0.0, 0.0, 0.7071067812]],
-                [Oz, [0, 0, 1], 1/4.,[ 0.7071067812, 0.0, 0.0]],
-                # "upper" cell
-                [Ox, [0, 1, 0],-1/8.,[ 0.0, 0.0, 0.7071067812]],
-                [Oz, [0, 1, 0], 1/8.,[ 0.7071067812, 0.0, 0.0]],
-                [Ox, [1, 1, 0], 1/8.,[ 0.0, 0.0, 0.7071067812]],
-                [Oz, [0, 1, 1],-1/8.,[ 0.7071067812, 0.0, 0.0]],
-            ]
+    AFDa_Y=[
+            # atom, hopping, weight, target vector
+            # "lower" cell
+            [Ox, [0,-1, 0],-1/8.,[ 0.0, 0.0, 0.7071067812]],
+            [Oz, [0,-1, 0], 1/8.,[ 0.7071067812, 0.0, 0.0]],
+            [Ox, [1,-1, 0], 1/8.,[ 0.0, 0.0, 0.7071067812]],
+            [Oz, [0,-1, 1],-1/8.,[ 0.7071067812, 0.0, 0.0]],
+            # "middle" cell
+            [Ox, [0, 0, 0], 1/4.,[ 0.0, 0.0, 0.7071067812]],
+            [Oz, [0, 0, 0],-1/4.,[ 0.7071067812, 0.0, 0.0]],
+            [Ox, [1, 0, 0],-1/4.,[ 0.0, 0.0, 0.7071067812]],
+            [Oz, [0, 0, 1], 1/4.,[ 0.7071067812, 0.0, 0.0]],
+            # "upper" cell
+            [Ox, [0, 1, 0],-1/8.,[ 0.0, 0.0, 0.7071067812]],
+            [Oz, [0, 1, 0], 1/8.,[ 0.7071067812, 0.0, 0.0]],
+            [Ox, [1, 1, 0], 1/8.,[ 0.0, 0.0, 0.7071067812]],
+            [Oz, [0, 1, 1],-1/8.,[ 0.7071067812, 0.0, 0.0]],
+        ]
 
 
-        AFDa_Z=[
-                # atom, hopping, weight, target vector
-                # "lower" cell
-                [Ox, [ 0, 0,-1],  1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 0,-1], -1/8., [ 0.7071067812, 0.0, 0.0]],
-                [Ox, [ 1, 0,-1], -1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 1,-1],  1/8., [ 0.7071067812, 0.0, 0.0]],
-                # "middle" cell
-                [Ox, [ 0, 0, 0], -1/4., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 0, 0],  1/4., [ 0.7071067812, 0.0, 0.0]],
-                [Ox, [ 1, 0, 0],  1/4., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 1, 0], -1/4., [ 0.7071067812, 0.0, 0.0]],
-                # "upper" cell
-                [Ox, [ 0, 0, 1],  1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 0, 1], -1/8., [ 0.7071067812, 0.0, 0.0]],
-                [Ox, [ 1, 0, 1], -1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 1, 1],  1/8., [ 0.7071067812, 0.0, 0.0]]
-            ]
+    AFDa_Z=[
+            # atom, hopping, weight, target vector
+            # "lower" cell
+            [Ox, [ 0, 0,-1],  1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 0,-1], -1/8., [ 0.7071067812, 0.0, 0.0]],
+            [Ox, [ 1, 0,-1], -1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 1,-1],  1/8., [ 0.7071067812, 0.0, 0.0]],
+            # "middle" cell
+            [Ox, [ 0, 0, 0], -1/4., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 0, 0],  1/4., [ 0.7071067812, 0.0, 0.0]],
+            [Ox, [ 1, 0, 0],  1/4., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 1, 0], -1/4., [ 0.7071067812, 0.0, 0.0]],
+            # "upper" cell
+            [Ox, [ 0, 0, 1],  1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 0, 1], -1/8., [ 0.7071067812, 0.0, 0.0]],
+            [Ox, [ 1, 0, 1], -1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 1, 1],  1/8., [ 0.7071067812, 0.0, 0.0]]
+        ]
 
-        AFDi_X=[
-                # atom, hopping, weight, target vector
-                # "lower" cell
-                [Oz, [-1, 0, 0],  1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [-1, 0, 0], -1/8., [ 0.0, 0.0, 0.7071067812]],
-                [Oz, [-1, 0, 1], -1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [-1, 1, 0],  1/8., [ 0.0, 0.0, 0.7071067812]],
-                # "middle" cell
-                [Oz, [ 0, 0, 0],  1/4., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 0, 0], -1/4., [ 0.0, 0.0, 0.7071067812]],
-                [Oz, [ 0, 0, 1], -1/4., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 1, 0],  1/4., [ 0.0, 0.0, 0.7071067812]],
-                # "upper" cell
-                [Oz, [ 1, 0, 0],  1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 1, 0, 0], -1/8., [ 0.0, 0.0, 0.7071067812]],
-                [Oz, [ 1, 0, 1], -1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 1, 1, 0],  1/8., [ 0.0, 0.0, 0.7071067812]],
-            ]
-
-
-        AFDi_Y=[
-                # atom, hopping, weight, target vector
-                # "lower" cell
-                [Ox, [0,-1, 0], 1/8.,[ 0.0, 0.0, 0.7071067812]],
-                [Oz, [0,-1, 0],-1/8.,[ 0.7071067812, 0.0, 0.0]],
-                [Ox, [1,-1, 0],-1/8.,[ 0.0, 0.0, 0.7071067812]],
-                [Oz, [0,-1, 1], 1/8.,[ 0.7071067812, 0.0, 0.0]],
-                # "middle" cell
-                [Ox, [0, 0, 0], 1/4.,[ 0.0, 0.0, 0.7071067812]],
-                [Oz, [0, 0, 0],-1/4.,[ 0.7071067812, 0.0, 0.0]],
-                [Ox, [1, 0, 0],-1/4.,[ 0.0, 0.0, 0.7071067812]],
-                [Oz, [0, 0, 1], 1/4.,[ 0.7071067812, 0.0, 0.0]],
-                # "upper" cell
-                [Ox, [0, 1, 0], 1/8.,[ 0.0, 0.0, 0.7071067812]],
-                [Oz, [0, 1, 0],-1/8.,[ 0.7071067812, 0.0, 0.0]],
-                [Ox, [1, 1, 0],-1/8.,[ 0.0, 0.0, 0.7071067812]],
-                [Oz, [0, 1, 1], 1/8.,[ 0.7071067812, 0.0, 0.0]],
-            ]
+    AFDi_X=[
+            # atom, hopping, weight, target vector
+            # "lower" cell
+            [Oz, [-1, 0, 0],  1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [-1, 0, 0], -1/8., [ 0.0, 0.0, 0.7071067812]],
+            [Oz, [-1, 0, 1], -1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [-1, 1, 0],  1/8., [ 0.0, 0.0, 0.7071067812]],
+            # "middle" cell
+            [Oz, [ 0, 0, 0],  1/4., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 0, 0], -1/4., [ 0.0, 0.0, 0.7071067812]],
+            [Oz, [ 0, 0, 1], -1/4., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 1, 0],  1/4., [ 0.0, 0.0, 0.7071067812]],
+            # "upper" cell
+            [Oz, [ 1, 0, 0],  1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 1, 0, 0], -1/8., [ 0.0, 0.0, 0.7071067812]],
+            [Oz, [ 1, 0, 1], -1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 1, 1, 0],  1/8., [ 0.0, 0.0, 0.7071067812]],
+        ]
 
 
-        AFDi_Z=[
-                # atom, hopping, weight, target vector
-                # "lower" cell
-                [Ox, [ 0, 0,-1], -1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 0,-1],  1/8., [ 0.7071067812, 0.0, 0.0]],
-                [Ox, [ 1, 0,-1],  1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 1,-1], -1/8., [ 0.7071067812, 0.0, 0.0]],
-                # "middle" cell
-                [Ox, [ 0, 0, 0], -1/4., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 0, 0],  1/4., [ 0.7071067812, 0.0, 0.0]],
-                [Ox, [ 1, 0, 0],  1/4., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 1, 0], -1/4., [ 0.7071067812, 0.0, 0.0]],
-                # "upper" cell
-                [Ox, [ 0, 0, 1], -1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 0, 1],  1/8., [ 0.7071067812, 0.0, 0.0]],
-                [Ox, [ 1, 0, 1],  1/8., [ 0.0, 0.7071067812, 0.0]],
-                [Oy, [ 0, 1, 1], -1/8., [ 0.7071067812, 0.0, 0.0]]
-            ]
+    AFDi_Y=[
+            # atom, hopping, weight, target vector
+            # "lower" cell
+            [Ox, [0,-1, 0], 1/8.,[ 0.0, 0.0, 0.7071067812]],
+            [Oz, [0,-1, 0],-1/8.,[ 0.7071067812, 0.0, 0.0]],
+            [Ox, [1,-1, 0],-1/8.,[ 0.0, 0.0, 0.7071067812]],
+            [Oz, [0,-1, 1], 1/8.,[ 0.7071067812, 0.0, 0.0]],
+            # "middle" cell
+            [Ox, [0, 0, 0], 1/4.,[ 0.0, 0.0, 0.7071067812]],
+            [Oz, [0, 0, 0],-1/4.,[ 0.7071067812, 0.0, 0.0]],
+            [Ox, [1, 0, 0],-1/4.,[ 0.0, 0.0, 0.7071067812]],
+            [Oz, [0, 0, 1], 1/4.,[ 0.7071067812, 0.0, 0.0]],
+            # "upper" cell
+            [Ox, [0, 1, 0], 1/8.,[ 0.0, 0.0, 0.7071067812]],
+            [Oz, [0, 1, 0],-1/8.,[ 0.7071067812, 0.0, 0.0]],
+            [Ox, [1, 1, 0],-1/8.,[ 0.0, 0.0, 0.7071067812]],
+            [Oz, [0, 1, 1], 1/8.,[ 0.7071067812, 0.0, 0.0]],
+        ]
+
+
+    AFDi_Z=[
+            # atom, hopping, weight, target vector
+            # "lower" cell
+            [Ox, [ 0, 0,-1], -1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 0,-1],  1/8., [ 0.7071067812, 0.0, 0.0]],
+            [Ox, [ 1, 0,-1],  1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 1,-1], -1/8., [ 0.7071067812, 0.0, 0.0]],
+            # "middle" cell
+            [Ox, [ 0, 0, 0], -1/4., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 0, 0],  1/4., [ 0.7071067812, 0.0, 0.0]],
+            [Ox, [ 1, 0, 0],  1/4., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 1, 0], -1/4., [ 0.7071067812, 0.0, 0.0]],
+            # "upper" cell
+            [Ox, [ 0, 0, 1], -1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 0, 1],  1/8., [ 0.7071067812, 0.0, 0.0]],
+            [Ox, [ 1, 0, 1],  1/8., [ 0.0, 0.7071067812, 0.0]],
+            [Oy, [ 0, 1, 1], -1/8., [ 0.7071067812, 0.0, 0.0]]
+        ]
 
 
 
-        if mode == "a":
+    if mode == "a":
 
-            # distortion
-            dist = np.zeros((geom.supercell[0], geom.supercell[1], geom.supercell[2], 3))
-            dist[:,:,:,0] = measure(geom, AFDa_X)
-            dist[:,:,:,1] = measure(geom, AFDa_Y)
-            dist[:,:,:,2] = measure(geom, AFDa_Z)
-            
-            # symmetry corrections -> R-point instability
-            if symmetry:
-                for x in range(geom.supercell[0]):
-                    for y in range(geom.supercell[1]):
-                        for z in range(geom.supercell[2]):
-                            dist[x,y,z,:] = (-1)**x * (-1)**y * (-1)**z * dist[x,y,z,:]
-
-            if angles:
-                return np.arctan(dist/(np.sqrt(2)*model["BOdist"]))*180/np.pi
-            else:
-                return dist
-
-        else:
-
-            # distortion
-            dist = np.zeros((geom.supercell[0], geom.supercell[1], geom.supercell[2], 3))
-            dist[:,:,:,0] = measure(geom, AFDi_X)
-            dist[:,:,:,1] = measure(geom, AFDi_Y)
-            dist[:,:,:,2] = measure(geom, AFDi_Z)
-            
-            # symmetry corrections -> M-point instability
-            if symmetry:
-                for x in range(geom.supercell[0]):
-                    for y in range(geom.supercell[1]):
-                        for z in range(geom.supercell[2]):
-                            dist[x,y,z,0] = (-1)**y * (-1)**z * dist[x,y,z,0]
-                            dist[x,y,z,1] = (-1)**x * (-1)**z * dist[x,y,z,1]
-                            dist[x,y,z,2] = (-1)**x * (-1)**y * dist[x,y,z,2]
-
-            if angles:
-                return np.arctan(dist/(np.sqrt(2)*model["BOdist"]))*180/np.pi
-            else:
-                return dist
-
-    if algo == "sign":
-
-        rots = STO_ROT(geom, model, angles=angles)
-        dirs = np.copy(rots)
-        proj = np.zeros_like(rots)
+        # distortion
+        dist = np.zeros((geom.supercell[0], geom.supercell[1], geom.supercell[2], 3))
+        dist[:,:,:,0] = measure(geom, AFDa_X)
+        dist[:,:,:,1] = measure(geom, AFDa_Y)
+        dist[:,:,:,2] = measure(geom, AFDa_Z)
         
-        # normalize the rotations
-        for x in range(geom.supercell[0]):
-            for y in range(geom.supercell[1]):
-                for z in range(geom.supercell[2]):
-                    dirs[x,y,z,:] = dirs[x,y,z,:]/np.linalg.norm(dirs[x,y,z,:])
+        # symmetry corrections -> R-point instability
+        if symmetry:
+            for x in range(geom.supercell[0]):
+                for y in range(geom.supercell[1]):
+                    for z in range(geom.supercell[2]):
+                        dist[x,y,z,:] = (-1)**x * (-1)**y * (-1)**z * dist[x,y,z,:]
 
-        # calculate the projection
-        for x in range(geom.supercell[0]):
-            for y in range(geom.supercell[1]):
-                for z in range(geom.supercell[2]):
+        if angles:
+            return np.arctan(dist/(np.sqrt(2)*model["BOdist"]))*180/np.pi
+        else:
+            return dist
 
-                    cell = np.array([x,y,z])
+    else:
 
-                    ux, uy, uz = np.mod(cell + [1,0,0], geom.supercell)
-                    dx, dy, dz = np.mod(cell - [1,0,0], geom.supercell)
-                    proj[x,y,z,0] = np.mean([
-                                    np.dot(dirs[x,y,z,:], dirs[ux,uy,uz,:]),
-                                    np.dot(dirs[x,y,z,:], dirs[dx,dy,dz,:])
-                                    ])
+        # distortion
+        dist = np.zeros((geom.supercell[0], geom.supercell[1], geom.supercell[2], 3))
+        dist[:,:,:,0] = measure(geom, AFDi_X)
+        dist[:,:,:,1] = measure(geom, AFDi_Y)
+        dist[:,:,:,2] = measure(geom, AFDi_Z)
+        
+        # symmetry corrections -> M-point instability
+        if symmetry:
+            for x in range(geom.supercell[0]):
+                for y in range(geom.supercell[1]):
+                    for z in range(geom.supercell[2]):
+                        dist[x,y,z,0] = (-1)**y * (-1)**z * dist[x,y,z,0]
+                        dist[x,y,z,1] = (-1)**x * (-1)**z * dist[x,y,z,1]
+                        dist[x,y,z,2] = (-1)**x * (-1)**y * dist[x,y,z,2]
 
-                    ux, uy, uz = np.mod(cell + [0,1,0], geom.supercell)
-                    dx, dy, dz = np.mod(cell - [0,1,0], geom.supercell)
-                    proj[x,y,z,1] = np.mean([
-                                    np.dot(dirs[x,y,z,:], dirs[ux,uy,uz,:]),
-                                    np.dot(dirs[x,y,z,:], dirs[dx,dy,dz,:])
-                                    ])
+        if angles:
+            return np.arctan(dist/(np.sqrt(2)*model["BOdist"]))*180/np.pi
+        else:
+            return dist
 
-                    ux, uy, uz = np.mod(cell + [0,0,1], geom.supercell)
-                    dx, dy, dz = np.mod(cell - [0,0,1], geom.supercell)
-                    proj[x,y,z,2] = np.mean([
-                                    np.dot(dirs[x,y,z,:], dirs[ux,uy,uz,:]),
-                                    np.dot(dirs[x,y,z,:], dirs[dx,dy,dz,:])
-                                    ])
-
-        return proj
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 def STO_FE(geom, model):
 

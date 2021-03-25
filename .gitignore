@@ -22,5 +22,8 @@
 /examples/csv/
 /examples/plots/
 
+# vim shit
+*.swp
+
 # Stuff from tests
 tests/*/*output*/

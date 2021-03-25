@@ -40,6 +40,7 @@ import ezSCUP.exceptions
 #   - change_output_folder()
 #   - independent_launch()
 #   - sequential_launch_by_temperature()
+#   - sequential_launch_by_strain()
 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -940,6 +941,178 @@ class MCSimulation:
 
                         # grab final geometry for next run if needed
                         if tcount < len(temp_sequence): 
+                            geo = parser.access_geometry(t, p=p, s=s, f=f)
+                            self.generator.displacements = geo.displacements
+
+                        print("All files stored in output/" + subfolder_name + " succesfully.\n")
+
+        # remove the copy of the model
+        os.remove("param_file.xml")
+
+        self.generator.reset_geom()
+
+        main_finished_time = time.time()
+        main_time = main_finished_time - main_start_time
+
+        print("Simulation process complete!")
+        print("Total simulation time: {:.3f}s".format(main_time))
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+    
+
+    def sequential_launch_by_strain(self, start_geo = None, inverse_order = False):
+
+        """
+        
+        Simulation run where the equilibrium geometry of the simulation for 
+        the previous temperature is used as starting geometry of the next one.
+
+        Parameters:
+        ----------
+
+        - start_geo (RestartGenerator): starting geometry of the first temperature.
+
+        """
+
+        # check if setup() has been run
+        if self.SETUP != True:
+            raise ezSCUP.exceptions.MissingSetup(
+            "Run MCSimulation.setup() before launching any simulation."
+            )
+
+        # check if simulation has already been carried out
+        if self.DONE == True:
+            return 0
+
+        print("\n ~ Sequential simulation run by strain engaged. ~ ")
+
+        # checks restart file matches loaded geometry
+        if start_geo != None and isinstance(start_geo, Geometry):
+
+            print("\nApplying starting geometry...")
+            
+            if not np.all(self.generator.supercell == start_geo.supercell): 
+                raise ezSCUP.exceptions.GeometryNotMatching()
+
+            if self.generator.nats != None and (start_geo.nats != self.model["nats"]):
+                raise ezSCUP.exceptions.GeometryNotMatching()
+
+            if self.generator.species != None and (set(self.model["species"]) != set(self.model["species"])):
+                raise ezSCUP.exceptions.GeometryNotMatching()
+
+        # get a copy of the model file
+        copy(self.model["file"], "param_file.xml")
+
+        # parser to get equilibrium geometry
+        parser = MCSimulationParser(output_folder=self.output_folder)
+
+        # adjust strain ordering
+        if inverse_order:
+            strain_sequence = list(reversed(list(self.strain)))
+        else:
+            strain_sequence = list(self.strain)
+
+        # simulation counters
+        total_counter   =  0
+
+        # total number of simulations 
+        nsims = self.temp.size*len(self.strain)*len(self.field)*len(self.stress)
+        
+        # starting time of the simulation process
+        main_start_time = time.time()
+
+        print("\nStarting calculations...\n")
+        for t in self.temp:
+            temp_counter = np.where(self.temp == t)[0][0]
+            for p in self.stress:
+                stress_counter = [np.array_equal(p,x) for x in self.stress].index(True)
+                for f in self.field:
+                    field_counter = [np.array_equal(f,x) for x in self.field].index(True)
+             
+                    # set starting geometry
+                    if start_geo != None and isinstance(start_geo, Geometry):
+                        self.generator.displacements = start_geo.displacements
+
+                    scount = 0
+                    for s in strain_sequence:
+                        strain_counter = [np.array_equal(s,x) for x in self.strain].index(True)
+                        
+                        # update simulation counter
+                        total_counter += 1
+                        scount += 1
+
+                        # starting time of the current configuration
+                        conf_start_time = time.time()
+
+                        print("##############################")
+                        print("Configuration " + str(total_counter) + " out of " + str(nsims))
+                        print("Temperature:",   str(t),"K")
+                        print("Stress:",        str(p),"GPa")
+                        print("Strain:",        str(s), r"% change")
+                        print("Electric Field:",str(f), "V/m")
+                        print("##############################")
+
+                        # file base name
+                        sim_name = self.name + "T{:d}".format(int(t))
+                        self.sim.settings["system_name"].value = sim_name
+
+                        # configuration name
+                        conf_name = "c{:02d}{:02d}{:02d}{:02d}".format(temp_counter,
+                            stress_counter, strain_counter, field_counter)
+
+                        # subfolder name
+                        subfolder_name = self.name + "." + conf_name
+
+                        # modify target temperature
+                        self.sim.settings["mc_temperature"].value = t 
+                         
+                        if self.stress != None: # modify target stress, if needed
+                            self.sim.settings["external_stress"] = [p]
+                        
+                        if self.strain != None: # set target strain, if needed
+                            self.generator.strains = s
+
+                        if self.field != None: # modify target field, if needed
+                            self.sim.settings["static_electric_field"] = [f]
+
+                        # define human output filename
+                        output = sim_name + ".out"
+
+                        # create restart file
+                        self.sim.settings["geometry_restart"] = FDFSetting(sim_name + ".restart")
+                        self.generator.write_restart(sim_name + ".restart")
+
+                        # simulate the current configuration
+                        self.sim.launch(output_file=output)
+
+                        # move all the output to its corresponding folder
+                        configuration_folder = os.path.join(self.main_output_folder, subfolder_name)
+                        os.makedirs(configuration_folder)
+
+                        files = os.listdir(self.current_path)
+                        for fi in files:
+                            if sim_name in fi:
+                                move(fi, configuration_folder)
+                        
+                        
+
+                        # finish time of the current conf
+                        conf_finish_time = time.time()
+
+                        conf_time = conf_finish_time-conf_start_time
+
+                        print("\nConfiguration finished! (time elapsed: {:.3f}s)".format(conf_time))
+                        
+                        # calculate equilibrium geometry
+                        print("Calculating equilibrium geometry...")
+                        partials = parser.find_partials(t, p=p, s=s, f=f,
+                        min_step=self.mc_equilibration_steps)
+                        aux_geo = Geometry(self.supercell, self.model["species"], self.model["nats"])
+                        aux_geo.load_equilibrium_displacements(partials)
+                        aux_geo.write_restart(os.path.join(configuration_folder, sim_name + "_EQUILIBRIUM.restart"))
+
+                        # grab final geometry for next run if needed
+                        if scount < len(strain_sequence): 
                             geo = parser.access_geometry(t, p=p, s=s, f=f)
                             self.generator.displacements = geo.displacements
 

@@ -74,10 +74,9 @@ class Geometry():
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def __init__(self, supercell, species, nats):
-
         
         """
-        
+
         Geometry class constructor.
 
         Parameters:
@@ -453,6 +452,9 @@ class Geometry():
 
         # Get the global cell vectors
         slat_vec = np.dot(strain, self.lat_vectors)
+        slat_vec[0,:] = slat_vec[0,:]*self.supercell[0]
+        slat_vec[1,:] = slat_vec[1,:]*self.supercell[1] 
+        slat_vec[2,:] = slat_vec[2,:]*self.supercell[2]  
 
         f = open(xsf_file, 'wt')
         tsv = csv.writer(f, delimiter="\t")
@@ -500,21 +502,10 @@ class Geometry():
 
         f.close()
 
-    def write_SIESTA(self, siesta_file):
+    def write_SIESTA(self, fdf_file):
 
-        """ 
-        
-        Writes an FDF block in SIESTA format in the specified file.
-
-        Parameters:
-        ----------
-
-        - siesta_file (string): file where to save the FDF block.
-
-        """
-
-        f = open(siesta_file, 'wt')
-        tsv = csv.writer(f, delimiter="\t")
+        if self.positions is None: 
+            raise ezSCUP.exceptions.PositionsNotLoaded()
 
         strain=np.zeros((3,3))
         for i in range(3):
@@ -526,46 +517,55 @@ class Geometry():
         strain[0,1]=self.strains[5]        
         strain[1,0]=self.strains[5]
 
-        lat_vec = np.dot(strain, self.lat_vectors)
-        lat_vec = np.array([lat_vec[0,0], lat_vec[1,1], lat_vec[2,2]])*self.supercell
+        # Get the global cell vectors
+        slat_vec = np.dot(strain, self.lat_vectors)
+        slat_vec[0,:] = slat_vec[0,:]*self.supercell[0]
+        slat_vec[1,:] = slat_vec[1,:]*self.supercell[1] 
+        slat_vec[2,:] = slat_vec[2,:]*self.supercell[2]  
 
-        # block header
-        #tsv.writerow(["AtomicCoordinatesFormat	    Fractional"])
-        #tsv.writerow(["AtomCoorFormatOut            Fractional"])
+        # get positions array
+        abs_pos = np.zeros((self.supercell[0], self.supercell[1], self.supercell[2], self.nats, 3))
+        frac_pos = np.zeros((self.supercell[0], self.supercell[1], self.supercell[2], self.nats, 3))
+        for x in range(self.supercell[0]):
+            for y in range(self.supercell[1]):
+                for z in range(self.supercell[2]):
+                    for j in range(self.nats):
+                        abs_pos[x,y,z,j,:]  = np.dot(strain, self.positions[x,y,z,j,:] + self.displacements[x,y,z,j,:])
+                        frac_pos[x,y,z,j,0] = abs_pos[x,y,z,j,0]/slat_vec[0,0] 
+                        frac_pos[x,y,z,j,1] = abs_pos[x,y,z,j,1]/slat_vec[1,1] 
+                        frac_pos[x,y,z,j,2] = abs_pos[x,y,z,j,2]/slat_vec[2,2] 
+
+
+        f = open(fdf_file, 'wt')
+        tsv = csv.writer(f, delimiter="\t")
+
         tsv.writerow([r"%block AtomicCoordinatesAndAtomicSpecies"])
 
-        # write block
+        # write position of each atom
         at = 0
         for x in range(self.supercell[0]):
             for y in range(self.supercell[1]):
                 for z in range(self.supercell[2]):
                     for j in range(self.nats):
-
-                        # fractional positions
-                        pos = np.dot(strain, self.positions[x,y,z,j,:] + self.displacements[x,y,z,j,:])
-                        pos = pos/lat_vec
-                        pos = ["{:.8F}".format(p) for p in pos]
-                        line = pos
+                        
+                        at += 1
+                        line = ["{:10.8F}".format(d) for d in frac_pos[x,y,z,j,:]]
 
                         if j+1 > self.nels:
                             species = self.nels
                         else:
                             species = j+1
                         
-                        # species number
-                        line.append(species)
+                        
+                        
+                        line += [species]
+                        line += [at]
+                        line += [self.species[species-1]]
 
-                        # atom number
-                        at += 1
-                        line.append(str(at))
-
-                        # species label
-                        line.append(self.species[species-1])
-                    
                         tsv.writerow(line)
 
+                        
         tsv.writerow([r"%endblock AtomicCoordinatesAndAtomicSpecies"])
-        
         f.close()
 
 # ================================================================= #
