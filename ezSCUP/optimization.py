@@ -17,8 +17,9 @@ import time                         # check simulation run time
 import re                           # regular expressions
 
 # package imports
-from ezSCUP.handlers import CGD_SCUPHandler, FDFSetting
-from ezSCUP.geometry import Geometry
+from ezSCUP.handlers    import CGD_SCUPHandler, FDFSetting
+from ezSCUP.singlepoint import SPRun
+from ezSCUP.geometry    import Geometry
 
 from ezSCUP.srtio3.models import STO_JPCM2013
 
@@ -185,6 +186,37 @@ class CGDSimulationParser:
         folder = os.path.join(self.main_output_folder, subfolder_name)
 
         return folder, sim_name
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+    def access_energy(self, p=None, s=None, f=None):
+
+        """
+
+        Access the energy of the corresponding configuration.
+
+        Parameters:
+        ----------
+
+        - p (array): Pressure (optional)
+        - s (array): Strain (optional)
+        - f (array): Electric Field (optional)
+
+        Return:
+        ----------
+            - A Geometry object for the corresponding configuration.
+
+        """
+
+        # folder and file naming
+        folder, _ = self.get_location(p, s, f)
+
+        energy_file = os.path.join(folder, "energy.pickle")
+
+        with open(energy_file, "rb") as f:
+            energy = pickle.load(f)
+        
+        return energy
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -392,17 +424,17 @@ class CGDSimulation:
 
         self.output_folder = output_folder # current output folder
         
-        if stress == None: # stress vector, optional
+        if stress is None: # stress vector, optional
             self.stress = [np.zeros(6)]
         else:
             self.stress = [np.array(p, dtype=np.float64) for p in stress]
 
-        if strain == None: # strain vector list, optional
+        if strain is None: # strain vector list, optional
             self.strain = [np.zeros(6)]
         else:
             self.strain = [np.array(s, dtype=np.float64) for s in strain]
         
-        if field == None: # electric field vector list, optional
+        if field is None: # electric field vector list, optional
             self.field = [np.zeros(3)]
         else:
             self.field = [np.array(f, dtype=np.float64) for f in field]
@@ -612,6 +644,9 @@ class CGDSimulation:
         # get a copy of the model file
         copy(self.model["file"], "param_file.xml")
 
+        # parser to get equilibrium geometry
+        parser = CGDSimulationParser(output_folder=self.output_folder)
+
         # simulation counters
         total_counter   =  0
 
@@ -687,6 +722,13 @@ class CGDSimulation:
                         if sim_name in fi:
                             move(fi, configuration_folder)
                     
+                    # calculate the energy
+                    geo    = parser.access_geometry(p=p, s=s, f=f)
+                    energy = SPRun("param_file.xml", geo)
+                    with open("energy.pickle", "wb") as f:
+                        pickle.dump(energy, f)
+                    move("energy.pickle", configuration_folder)
+
                     # finish time of the current conf
                     conf_finish_time = time.time()
 
@@ -835,6 +877,13 @@ class CGDSimulation:
                     for fi in files:
                         if sim_name in fi:
                             move(fi, configuration_folder)
+
+                    # calculate the energy
+                    geo    = parser.access_geometry(p=p, s=s, f=f)
+                    energy = SPRun("param_file.xml", geo)
+                    with open("energy.pickle", "wb") as f:
+                        pickle.dump(energy, f)
+                    move("energy.pickle", configuration_folder)
                     
                     # finish time of the current conf
                     conf_finish_time = time.time()

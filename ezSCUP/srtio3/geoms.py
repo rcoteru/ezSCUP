@@ -49,7 +49,7 @@ class STOGeometry(Geometry):
 # ~~~~~~~~~~~~~~~~~~~~ GEOMETRY GENERATION ~~~~~~~~~~~~~~~~~~~~~~~~ #
 # ================================================================= #
 
-def AFD_monodomain(supercell, model, angle, mode="a", axis="z", clockwise=False):
+def STO_AFD(supercell, model, angle, mode="a", axis="z", clockwise=False):
 
     """
 
@@ -117,14 +117,46 @@ def AFD_monodomain(supercell, model, angle, mode="a", axis="z", clockwise=False)
 
     return geom
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-def AFD_layers(supercell, model, angle, region_size, mode="a", axis="z", clockwise=False):
+def STO_FE(supercell, model, disp, axis="z"):
 
     """
 
     """
 
-    _, _, Ox, Oy, Oz = model["labels"]
+    _, B, _, _, _ = model["labels"]
+    geom = STOGeometry(supercell, model)
+
+    for x in range(supercell[0]):
+        for y in range(supercell[1]):
+            for z in range(supercell[2]):
+
+                if axis == "x":
+                    geom.displacements[x,y,z,B,0] += disp
+                elif axis == "y":
+                    geom.displacements[x,y,z,B,1] += disp
+                elif axis == "z":
+                    geom.displacements[x,y,z,B,2] += disp
+                elif axis == "xy" or axis == "yx":
+                    geom.displacements[x,y,z,B,0] += disp
+                    geom.displacements[x,y,z,B,1] += disp
+                else:
+                    raise NotImplementedError()
+
+    return geom
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+def STO_AFD_FE(supercell, model, angle, ti_disp, mode="a", axis="z", clockwise=False):
+
+    """
+
+    """
+
+    _, B, Ox, Oy, Oz = model["labels"]
     geom = STOGeometry(supercell, model)
     disp = model["BOdist"]*np.arctan(angle/180.*np.pi)
 
@@ -139,49 +171,56 @@ def AFD_layers(supercell, model, angle, region_size, mode="a", axis="z", clockwi
 
                 if mode == "a":
 
+                    factor = (-1)**x * (-1)**y * (-1)**z * (-1)**cw
+
                     if axis == "x":
-                        layer = np.floor(x/region_size)%2
-                        factor = (-1)**x * (-1)**y * (-1)**z * (-1)**cw * (-1)**layer
                         geom.displacements[x,y,z,Oy,2] -= factor*disp
                         geom.displacements[x,y,z,Oz,1] += factor*disp
-
+                        geom.displacements[x,y,z,B,0]  += ti_disp
                     elif axis == "y":
-                        layer = np.floor(y/region_size)%2
-                        factor = (-1)**x * (-1)**y * (-1)**z * (-1)**cw * (-1)**layer
                         geom.displacements[x,y,z,Oz,0] -= factor*disp
                         geom.displacements[x,y,z,Ox,2] += factor*disp
-
+                        geom.displacements[x,y,z,B,1]  += ti_disp
                     elif axis == "z":
-                        layer = np.floor(z/region_size)%2
-                        factor = (-1)**x * (-1)**y * (-1)**z * (-1)**cw * (-1)**layer
                         geom.displacements[x,y,z,Ox,1] -= factor*disp
                         geom.displacements[x,y,z,Oy,0] += factor*disp
-
+                        geom.displacements[x,y,z,B,2]  += ti_disp
+                    elif axis == "xy" or axis == "yx":
+                        geom.displacements[x,y,z,Oy,2] -= factor*disp
+                        geom.displacements[x,y,z,Oz,1] += factor*disp
+                        geom.displacements[x,y,z,Oz,0] -= factor*disp
+                        geom.displacements[x,y,z,Ox,2] += factor*disp
+                        geom.displacements[x,y,z,B,0]  += ti_disp
+                        geom.displacements[x,y,z,B,1]  += ti_disp
                     else:
                         raise NotImplementedError()
-
 
                 elif mode == "i":
 
                     if axis == "x":
                         factor = (-1)**y * (-1)**z * (-1)**cw
-                        geom.displacements[x,y,z,Oy,2] -= factor*disp
-                        geom.displacements[x,y,z,Oz,1] += factor*disp
+                        geom.displacements[x,y,z,Oy,2] -= factor*disp[2]
+                        geom.displacements[x,y,z,Oz,1] += factor*disp[1]
+                        geom.displacements[x,y,z,B,0]  += ti_disp
                     elif axis == "y":
                         factor = (-1)**x * (-1)**z * (-1)**cw
-                        geom.displacements[x,y,z,Oz,0] -= factor*disp
-                        geom.displacements[x,y,z,Ox,2] += factor*disp
+                        geom.displacements[x,y,z,Oz,0] -= factor*disp[0]
+                        geom.displacements[x,y,z,Ox,2] += factor*disp[2]
+                        geom.displacements[x,y,z,B,1]  += ti_disp
                     elif axis == "z":
                         factor = (-1)**x * (-1)**y * (-1)**cw
-                        geom.displacements[x,y,z,Ox,1] -= factor*disp
-                        geom.displacements[x,y,z,Oy,0] += factor*disp
+                        geom.displacements[x,y,z,Ox,1] -= factor*disp[1]
+                        geom.displacements[x,y,z,Oy,0] += factor*disp[0]
+                        geom.displacements[x,y,z,B,2]  += ti_disp
                     elif axis == "xy" or axis == "yx":
                         factor = (-1)**y * (-1)**z * (-1)**cw
-                        geom.displacements[x,y,z,Oy,2] -= factor*disp
-                        geom.displacements[x,y,z,Oz,1] += factor*disp
+                        geom.displacements[x,y,z,Oy,2] -= factor*disp[2]
+                        geom.displacements[x,y,z,Oz,1] += factor*disp[1]
                         factor = (-1)**x * (-1)**z * (-1)**cw
-                        geom.displacements[x,y,z,Oz,0] -= factor*disp
-                        geom.displacements[x,y,z,Ox,2] += factor*disp
+                        geom.displacements[x,y,z,Oz,0] -= factor*disp[0]
+                        geom.displacements[x,y,z,Ox,2] += factor*disp[2]
+                        geom.displacements[x,y,z,B,0]  += ti_disp
+                        geom.displacements[x,y,z,B,1]  += ti_disp
                     else:
                         raise NotImplementedError()
     
