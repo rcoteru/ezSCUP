@@ -69,23 +69,18 @@ class STO_MCAnalyzer(MCSimulationParser):
                 for k,_ in enumerate(self.field):
 
                     Tlabel = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    STRAlabel = "p{:d}f{:d}".format(j,k)
 
                     dirs = [
                             os.path.join(self.ffiles, Tlabel),
-                            os.path.join(self.fplots, "T-dep"),
-                            os.path.join(self.fplots, "T-dep", Tlabel),
-                            os.path.join(self.fplots, "T-dep", Tlabel, "ROT"),
-                            os.path.join(self.fplots, "T-dep", Tlabel, "AFDa"),
-                            os.path.join(self.fplots, "T-dep", Tlabel, "AFDi"),
-                            os.path.join(self.fplots, "T-dep", Tlabel, "FE"),
-                            os.path.join(self.fplots, "T-dep", Tlabel, "AFE"),
-                            os.path.join(self.fplots, "T-dep", Tlabel, "OD"),
-                            os.path.join(self.fplots, "T-dep", Tlabel, "POL"),
-                            os.path.join(self.fplots, "T-dep", Tlabel, "STRA"),                            
-                            os.path.join(self.fplots, "STRA-dep"),
-                            os.path.join(self.fplots, "STRA-dep", STRAlabel),
-                            os.path.join(self.fplots, "STRA-dep", STRAlabel, "ROT")
+                            os.path.join(self.fplots, Tlabel),
+                            os.path.join(self.fplots, Tlabel, "ROT"),
+                            os.path.join(self.fplots, Tlabel, "AFDa"),
+                            os.path.join(self.fplots, Tlabel, "AFDi"),
+                            os.path.join(self.fplots, Tlabel, "FE"),
+                            os.path.join(self.fplots, Tlabel, "AFE"),
+                            os.path.join(self.fplots, Tlabel, "OD"),
+                            os.path.join(self.fplots, Tlabel, "POL"),
+                            os.path.join(self.fplots, Tlabel, "STRA"),                            
                             ]
 
                     for d in dirs:
@@ -159,7 +154,7 @@ class STO_MCAnalyzer(MCSimulationParser):
 
 
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label, "T-dep", "ROT")
+                    fplot = os.path.join(self.fplots, label, "ROT")
                     ffile = os.path.join(self.ffiles, label)
 
                     if abs:
@@ -200,81 +195,6 @@ class STO_MCAnalyzer(MCSimulationParser):
                         df.to_csv(os.path.join(ffile, "ROT_abs.csv"), index=False)
                     else:
                         df.to_csv(os.path.join(ffile, "ROT.csv"), index=False)
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-    
-    def ROT_vs_STRA_fixed_T(self, abs=False):
-
-        stra_list = np.array([s[0] for s in self.strain])
-
-        for j,p in enumerate(self.stress):
-            for k,f in enumerate(self.field):
-                
-                t = self.temp[0]
-
-                rots = np.zeros((len(self.strain), 2, 3)) 
-                for i, s in enumerate(self.strain):
-
-                    geom = self.access_geometry(t, s=s, p=p, f=f)
-
-                    angles = STO_ROT(geom, self.model, angles=True)
-
-                    if abs:
-                        xrot, xrot_err = np.mean(np.abs(angles[:,:,:,0])), np.std(np.abs(angles[:,:,:,0]))
-                        yrot, yrot_err = np.mean(np.abs(angles[:,:,:,1])), np.std(np.abs(angles[:,:,:,1]))
-                        zrot, zrot_err = np.mean(np.abs(angles[:,:,:,2])), np.std(np.abs(angles[:,:,:,2]))
-                    else:
-                        xrot, xrot_err = np.mean(angles[:,:,:,0]), np.std(angles[:,:,:,0])
-                        yrot, yrot_err = np.mean(angles[:,:,:,1]), np.std(angles[:,:,:,1])
-                        zrot, zrot_err = np.mean(angles[:,:,:,2]), np.std(angles[:,:,:,2])
-    
-                    rots[i,0,:] = [xrot, yrot, zrot]
-                    rots[i,1,:] = [xrot_err, yrot_err, zrot_err]
-
-
-                label = "p{:d}f{:d}".format(j,k)
-                fplot = os.path.join(self.fplots, "STRA-dep", label, "ROT")
-                ffile = os.path.join(self.ffiles, label)
-
-                if abs:
-                    plt.figure("ROTvsSTRA_abs.png")
-                else:
-                    plt.figure("ROTvsSTRA.png")
-
-                plt.errorbar(stra_list*100, np.abs(rots[:,0,0]), yerr=rots[:,1,0], 
-                label=r"ROT$_{x}", marker ="<", c=self.colors[0]) 
-                plt.errorbar(stra_list*100, np.abs(rots[:,0,1]), yerr=rots[:,1,1], 
-                label=r"ROT$_{y}", marker =">", c=self.colors[1]) 
-                plt.errorbar(stra_list*100, np.abs(rots[:,0,2]), yerr=rots[:,1,2], 
-                label=r"ROT$_{z}", marker ="^", c=self.colors[2]) 
-                plt.ylabel("ROT (deg)", fontsize = self.label_size)
-                plt.xlabel("Strain (%)", fontsize = self.label_size)
-                plt.legend(frameon=True, fontsize = self.label_size)
-                plt.tight_layout(pad = self.figure_pad)
-                plt.ylim(0, 10)
-                plt.grid(True)
-                if abs:
-                    plt.savefig(os.path.join(fplot, "ROTvsSTRA_abs.png"))
-                else:
-                    plt.savefig(os.path.join(fplot, "ROTvsSTRA.png"))
-                plt.close()
-
-               # index = 1
-               # data = np.zeros((len(self.temp), 7))
-               # data[:,0] = t
-               # for dim in range(3):
-               #     for value in range(2): 
-               #         data[:,index] = rots[:,value, dim]
-               #         index += 1
-               # headers = ["temp", "xrot", "xrot_err", "yrot", 
-               # "yrot_err", "zrot", "zrot_err"]
-
-               # df = pd.DataFrame(data, columns=headers)
-               # if abs:
-               #     df.to_csv(os.path.join(ffile, "ROTvsSTRA_abs.csv"), index=False)
-               # else:
-               #     df.to_csv(os.path.join(ffile, "ROTvsSTRA.csv"), index=False)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -401,7 +321,7 @@ class STO_MCAnalyzer(MCSimulationParser):
                         pass
 
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label, "T-dep", "FE")
+                    fplot = os.path.join(self.fplots, label, "FE")
                     ffile = os.path.join(self.ffiles, label)
 
                     plt.figure("FE.png")
@@ -469,7 +389,7 @@ class STO_MCAnalyzer(MCSimulationParser):
                         pass
 
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label, "T-dep", "AFE")
+                    fplot = os.path.join(self.fplots, label, "AFE")
                     ffile = os.path.join(self.ffiles, label)
 
                     plt.figure("AFE.png")
@@ -537,7 +457,7 @@ class STO_MCAnalyzer(MCSimulationParser):
                         pass
 
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label, "T-dep", "AFE")                    
+                    fplot = os.path.join(self.fplots, label, "AFE")                    
                     ffile = os.path.join(self.ffiles, label)
 
                     plt.figure("OD.png")
@@ -604,7 +524,7 @@ class STO_MCAnalyzer(MCSimulationParser):
                         pass
 
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label, "T-dep", "STRA")                    
+                    fplot = os.path.join(self.fplots, label, "STRA")                    
                     ffile = os.path.join(self.ffiles, label)
 
                     plt.figure("STRAvsT.png")
@@ -666,7 +586,7 @@ class STO_MCAnalyzer(MCSimulationParser):
                         pass
 
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label, "T-dep", "POL")                    
+                    fplot = os.path.join(self.fplots, label, "POL")                    
                     ffile = os.path.join(self.ffiles, label)
 
                     plt.figure("POLvsT.png")
@@ -722,7 +642,7 @@ class STO_MCAnalyzer(MCSimulationParser):
                 for k,f in enumerate(self.field):
                     
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label, "T-dep", "ROT")
+                    fplot = os.path.join(self.fplots, label, "ROT")
                     
                     for _, t in enumerate(self.temp):
 
@@ -764,8 +684,8 @@ class STO_MCAnalyzer(MCSimulationParser):
 
                         if len(layers) == 2:
 
-                            u1, v1 = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
-                            u2, v2 = angles[:,:,layers[1],0], angles[:,:,layers[1],1]
+                            v1, u1 = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
+                            v2, u2 = angles[:,:,layers[1],0], angles[:,:,layers[1],1]
                             
                             fig, axs = plt.subplots(1,2, figsize=[13,7], sharey=True)
                             fig.suptitle("Octahedral Rotation @ $T={:d}$ K (sym={:s})".format(int(t), symmetry), fontsize = self.label_size)
@@ -804,7 +724,7 @@ class STO_MCAnalyzer(MCSimulationParser):
                 for k,f in enumerate(self.field):
                     
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label, "T-dep", "ROT")
+                    fplot = os.path.join(self.fplots, label, "ROT")
                     
                     for _, t in enumerate(self.temp):
 
@@ -901,7 +821,7 @@ class STO_MCAnalyzer(MCSimulationParser):
                 for k,f in enumerate(self.field):
                     
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label, "T-dep", "AFD"+mode)
+                    fplot = os.path.join(self.fplots, label, "AFD"+mode)
                     
                     for _, t in enumerate(self.temp):
 
@@ -976,7 +896,7 @@ class STO_MCAnalyzer(MCSimulationParser):
                 for k,f in enumerate(self.field):
                     
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label, "T-dep", "FE")
+                    fplot = os.path.join(self.fplots, label, "FE")
                     
                     for _, t in enumerate(self.temp):
 
@@ -1000,8 +920,8 @@ class STO_MCAnalyzer(MCSimulationParser):
 
                         if len(layers) == 2:
 
-                            u1, v1 = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
-                            u2, v2 = angles[:,:,layers[1],0], angles[:,:,layers[1],1]
+                            v1, u1 = angles[:,:,layers[0],0], angles[:,:,layers[0],1]
+                            v2, u2 = angles[:,:,layers[1],0], angles[:,:,layers[1],1]
                             
                             fig, axs = plt.subplots(1,2, figsize=[13,7], sharey=True)
                             fig.suptitle("FE Mode Amplitude @ $T={:d}$ K".format(int(t)), fontsize = self.label_size)
@@ -1040,7 +960,7 @@ class STO_MCAnalyzer(MCSimulationParser):
                 for k,f in enumerate(self.field):
                     
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label, "T-dep", "POL")
+                    fplot = os.path.join(self.fplots, label, "POL")
                     
                     for _, t in enumerate(self.temp):
 
@@ -1064,8 +984,8 @@ class STO_MCAnalyzer(MCSimulationParser):
 
                         if len(layers) == 2:
 
-                            u1, v1 = pols[:,:,layers[0],0], pols[:,:,layers[0],1]
-                            u2, v2 = pols[:,:,layers[1],0], pols[:,:,layers[1],1]
+                            v1, u1 = pols[:,:,layers[0],0], pols[:,:,layers[0],1]
+                            v2, u2 = pols[:,:,layers[1],0], pols[:,:,layers[1],1]
                             
                             fig, axs = plt.subplots(1,2, figsize=[13,7], sharey=True)
                             fig.suptitle("Polarization per Unit Cell @ $T={:d}$ K".format(int(t)), fontsize = self.label_size)
@@ -1104,7 +1024,7 @@ class STO_MCAnalyzer(MCSimulationParser):
                 for k,f in enumerate(self.field):
                     
                     label = "s{:d}p{:d}f{:d}".format(i,j,k)
-                    fplot = os.path.join(self.fplots, label, "T-dep", "POL")
+                    fplot = os.path.join(self.fplots, label, "POL")
                     
                     for _, t in enumerate(self.temp):
 
