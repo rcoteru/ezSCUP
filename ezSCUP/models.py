@@ -1,13 +1,57 @@
-"""
-    Strontium titanate models
-"""
-
-# third party imports
+import xml.etree.ElementTree as ET
 import numpy as np
 import os
 
-# package imports
-import ezSCUP.settings as cfg
+MODEL_FOLDER  = os.getenv("SCUP_MODELS", default = None)
+STORED_MODELS = [f for f in os.listdir(MODEL_FOLDER)]
+
+class Model():
+
+    def __init__(self, fname:str):
+
+        self.file = fname
+        tree = ET.parse(fname)
+        root = tree.getroot()
+
+        # lattice vectors
+        self.lat_vecs = np.array([float(c) for c in root.find("unit_cell").text.split()]).reshape([3,3])
+
+        # atom information
+        nat = 0
+        self.atoms        = {}
+        self.ref_struct   = {}
+        self.born_charges = {}
+        for atom in root.iter("atom"):
+
+            self.atoms[nat] = {
+                "species":      atom.attrib.get("element"),
+                "mass":         atom.attrib.get("mass"),
+                "mass_units":   atom.attrib.get("massunits")
+            }
+
+            self.ref_struct[nat] = np.array([float(c) for c in atom.find("position").text.split()])
+            self.born_charges[nat] = np.array([float(c) for c in atom.find("borncharge").text.split()]).reshape([3,3])
+
+            nat += 1
+
+        self.nats = 5
+
+        # unit information
+        self.length_units = root.find("unit_cell").attrib.get("units")
+        self.mass_units   = root.find("atom").attrib.get("massunits")
+        self.charge_units = root.find("atom").find("borncharge").attrib.get("units")
+
+        pass
+
+    def reorder(self):
+
+        #TODO
+
+        pass
+
+AVAILABLE_MODELS: dict = {}
+for m in STORED_MODELS:
+    AVAILABLE_MODELS[m[:-4]] = Model(os.path.join(MODEL_FOLDER, m))
 
 #####################################################################
 #                       STO_JPCM2013 MODEL                          #
@@ -16,7 +60,7 @@ import ezSCUP.settings as cfg
 
 STO_JPCM2013 = {
     "name": "STO_JPCM2013",                                         # model name
-    "file": os.path.join(cfg.SCUP_MODELS, "STO_JPCM2013.xml"),      # model file
+    "file": os.path.join(MODEL_FOLDER, "STO_JPCM2013.xml"),      # model file
     "species": ["Sr", "Ti", "O"],                                   # elements in the lattice
     "masses": [87.6, 47.9, 16, 16, 16],                             # masses, in atomic units
     "labels": [0, 1, 4, 3, 2],                                      # [A, B, 0x, Oy, Oz]
@@ -50,7 +94,7 @@ STO_JPCM2013 = {
 
 STO_PRB2017 = {
     "name": "STO_PRB2017",                                          # model name
-    "file": os.path.join(cfg.SCUP_MODELS, "STO_PRB2017.xml"),       # model file
+    "file": os.path.join(MODEL_FOLDER, "STO_PRB2017.xml"),       # model file
     "species": ["Ti", "Sr", "O"],                                   # elements in the lattice
     "masses": [47.867, 87.62, 16.0, 16.0, 16.0],                    # masses, in atomic units
     "labels": [1, 0, 2, 3, 4],                                      # [A, B, 0x, Oy, Oz]
