@@ -199,7 +199,7 @@ class FDFManager():
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 def single_point_run(folder, geom:Geometry,
-    fdf:FDFManager = FDFManager(runtype="SP")):
+    fdf:FDFManager = FDFManager(runtype="SP")) -> None:
 
     # create working directory
     original_dir = os.getcwd()
