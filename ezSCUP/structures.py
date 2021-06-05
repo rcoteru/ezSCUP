@@ -68,6 +68,40 @@ class Geometry():
         self.strain[0,1] = str_voigt[5]
         self.strain[1,0] = str_voigt[5]
 
+    def get_positions(self, unit:str = "bohr", displacements:bool = True):
+
+        positions = np.zeros((self.sc[0], self.sc[1], self.sc[2], self.nats, 3))
+
+        if displacements:
+            for x in range(self.sc[0]):
+                for y in range(self.sc[1]):
+                    for z in range(self.sc[2]):
+                        for at in range(self.nats):
+                            positions[x,y,z,at,:] = np.dot(self.strain, self.reference[x,y,z,at,:]) + self.displacements[x,y,z,at,:]
+        else:
+            for x in range(self.sc[0]):
+                for y in range(self.sc[1]):
+                    for z in range(self.sc[2]):
+                        for at in range(self.nats):
+                            positions[x,y,z,at,:] = np.dot(self.strain, self.reference[x,y,z,at,:])
+
+        if unit == "bohr":
+            return positions
+        elif unit == "ang":
+            return positions*self.bohr2ang
+        else:
+            print("ERROR: Please enter a valid unit.")
+            exit
+
+    def get_lattice_vectors(self):
+
+        str_vecs = np.dot(self.strain, self.ref_lat_vecs)
+        str_lat_pars = np.diag(str_vecs)
+
+        return str_lat_pars
+
+
+
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     #                    SCALE-UP RESTART FILES                     #

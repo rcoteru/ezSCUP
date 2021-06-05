@@ -137,6 +137,77 @@ class STOGeometry(Geometry):
 
         return pols
 
+    def local_strain(self, format:str = "displacement"):
+
+        A, B, Ox, Oy, Oz = self.id_list
+
+        X_expansion = [  # [atom, hopping].  weight
+              [A, [0, 0, 0], A, [1,0,0], 1./4.],
+              [A, [0, 1, 0], A, [1,1,0], 1./4.],
+              [A, [0, 0, 1], A, [1,0,1], 1./4.],
+              [A, [0, 1, 1], A, [1,1,1], 1./4.],
+        ]
+
+        Y_expansion = [  # [atom, hopping].  weight
+              [A, [0, 0, 0], A, [0,1,0], 1./4.],
+              [A, [1, 0, 0], A, [1,1,0], 1./4.],
+              [A, [0, 0, 1], A, [0,1,1], 1./4.],
+              [A, [1, 0, 1], A, [1,1,1], 1./4.],
+        ]
+
+        Z_expansion = [  # [atom, hopping].  weight
+              [A, [0, 0, 0], A, [0,0,1], 1./4.],
+              [A, [0, 1, 0], A, [0,1,1], 1./4.],
+              [A, [1, 0, 0], A, [1,0,1], 1./4.],
+              [A, [1, 1, 0], A, [1,1,1], 1./4.],
+        ]
+
+        exps  = np.zeros((self.sc[0], self.sc[1], self.sc[2], 3))
+        poss  = self.displacements
+
+        for x in range(self.sc[0]):
+            for y in range(self.sc[1]):
+                for z in range(self.sc[2]):
+
+                    cell = np.array([x,y,z])
+                
+                    for comp in X_expansion:
+                        x1, y1, z1 = np.mod(cell + comp[1], self.sc)
+                        x2, y2, z2 = np.mod(cell + comp[3], self.sc)
+                        exps[x,y,z,0] += comp[4]*(poss[x1,y1,z1,comp[0],0] - poss[x2,y2,z2,comp[2],0])
+
+                    for comp in Y_expansion:
+                        x1, y1, z1 = np.mod(cell + comp[1], self.sc)
+                        x2, y2, z2 = np.mod(cell + comp[3], self.sc)
+                        exps[x,y,z,1] += comp[4]*(poss[x1,y1,z1,comp[0],1] - poss[x2,y2,z2,comp[2],1])
+
+                    for comp in Z_expansion:
+                        x1, y1, z1 = np.mod(cell + comp[1], self.sc)
+                        x2, y2, z2 = np.mod(cell + comp[3], self.sc)
+                        exps[x,y,z,2] += comp[4]*(poss[x1,y1,z1,comp[0],2] - poss[x2,y2,z2,comp[2],2])
+
+        if format == "displacement":
+            return exps
+        
+        elif format == "distance":
+            
+            str_vecs = np.dot(self.strain, self.ref_lat_vecs)
+            str_lat_pars = np.diag(str_vecs)
+
+            for x in range(self.sc[0]):
+                for y in range(self.sc[1]):
+                    for z in range(self.sc[2]):
+                        for i in range(3):
+                            exps[x,y,z,i] += str_lat_pars[i] 
+        
+            return exps
+        
+        else:
+            print("ERROR: Unsupported output format")
+            exit
+
+        return exps
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 #               functions to create specific geometries                 #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #     

@@ -99,12 +99,12 @@ class FDFManager():
 
         if len(str_comps) != 6:
             print("ERROR: Invalid strain restrictions.")
-            exit
+            exit()
 
         for r in str_comps:
             if type(r) is not bool:
                 print("ERROR: Invalid strain restrictions.")
-                exit
+                exit()
 
         str_set = []
         for r in str_comps:
@@ -114,6 +114,19 @@ class FDFManager():
                 str_set.append("F")
 
         self.settings["fix_strain_component"] = [str_set]
+
+    def set_annealing_rate(self, rate:int):
+
+        if type(rate) is not float:
+            print("ERROR: Annealing rate should be a float!")
+            exit()
+
+        if rate <= 0 or rate > 1:
+            print("ERROR: Annealing rate should be in the (0,1] interval!")
+            exit()
+
+        self.settings["mc_annealing_rate"] = [rate]
+
 
     def read_fdf(self, fdf_file:str):
 
@@ -287,8 +300,8 @@ def optimization_run(folder, geom:Geometry, max_its:int=1000,
 
     return True
 
-def montecarlo_run(folder, geom:Geometry, temp:float = 298.15, 
-    nsteps:int = 1000, fdf:FDFManager = FDFManager(runtype="OPT")) -> None:
+def montecarlo_run(folder, geom:Geometry, temp:float = 298.15, annealing_rate:float = 1.0,
+    nsteps:int = 1000, fdf:FDFManager = FDFManager(runtype="MC")) -> None:
 
     # create working directory
     original_dir = os.getcwd()
@@ -311,11 +324,12 @@ def montecarlo_run(folder, geom:Geometry, temp:float = 298.15,
     geom.write_restart(restart_fname)
 
     # edit required fdf settings
-    fdf.settings["supercell"]        = [list(geom.sc)]
-    fdf.settings["parameter_file"]   = [model_fname]
-    fdf.settings["geometry_restart"] = [restart_fname]
-    fdf.settings["mc_nsweeps"]       = [nsteps]
-    fdf.settings["mc_temperature"]   = [temp, "kelvin"],
+    fdf.settings["supercell"]         = [list(geom.sc)]
+    fdf.settings["parameter_file"]    = [model_fname]
+    fdf.settings["geometry_restart"]  = [restart_fname]
+    fdf.settings["mc_nsweeps"]        = [nsteps]
+    fdf.settings["mc_temperature"]    = [temp, "kelvin"]
+    fdf.settings["mc_annealing_rate"] = [annealing_rate]
 
     # create input settings file
     fdf_file  = "ezSCUP_input.fdf"
