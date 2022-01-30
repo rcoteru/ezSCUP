@@ -1,4 +1,4 @@
-# ezSCUP: SCALE-UP made easy.
+# ezSCUP: SCALE-UP made easy
 
 ezSCUP is a Python module designed to facilitate the execution of SCALE-UP simulations in a parameter grid of temperatures, pressures, strains and/or electric fields. It provides a high-level interface to handle the program and its output, includes several analysis functions concerning structural modes and macroscopic polarization in perovskites. 
 
